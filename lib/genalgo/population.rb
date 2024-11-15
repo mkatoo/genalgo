@@ -7,12 +7,11 @@ module Genalgo
   class Population
     include Enumerable
 
-    def initialize(n_pop:, n_dim:, seed:, upper_limit:, lower_limit:)
+    def initialize(n_pop:, n_dim:, lower_limit:, upper_limit:)
       @n_pop = n_pop
       @n_dim = n_dim
-      @upper_limit = upper_limit
       @lower_limit = lower_limit
-      @seed = seed
+      @upper_limit = upper_limit
 
       initialize_population
     end
@@ -54,7 +53,7 @@ module Genalgo
       raise "Dimension is not enough." if @n_dim <= 0
 
       @population = Array.new(@n_pop) do
-        Individual.new(n_dim: @n_dim, seed: @seed, upper_limit: @upper_limit, lower_limit: @lower_limit)
+        Individual.new(n_dim: @n_dim, lower_limit: @lower_limit, upper_limit: @upper_limit)
       end
     end
 
