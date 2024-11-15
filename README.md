@@ -40,7 +40,7 @@ executor.evaluation_function = lambda { |x| sphere(x) }
 
 executor.execute
 
-executor.best_individual
+executor.history.last.best_individual
 ```
 
 ## License

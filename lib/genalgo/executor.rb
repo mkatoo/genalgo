@@ -2,13 +2,13 @@
 
 require_relative "population"
 require_relative "mgg"
+require_relative "history"
 
 module Genalgo
   # Executor
   class Executor
     attr_accessor :n_pop, :n_dim, :n_eval, :evaluation_function, :seed, :upper_limit, :lower_limit
-
-    attr_reader :population
+    attr_reader :population, :history
 
     def initialize(params = {})
       @n_pop = params[:n_pop]
@@ -23,10 +23,12 @@ module Genalgo
     def execute
       setup
       initialize_population
+      add_history
 
-      while @_evals + MGG.evaluations_per_generation <= @n_eval
+      while @evals + MGG.evaluations_per_generation <= @n_eval
         @population = MGG.next_generation(@population)
-        @_evals += MGG.evaluations_per_generation
+        @evals += MGG.evaluations_per_generation
+        add_history
       end
     end
 
@@ -43,6 +45,8 @@ module Genalgo
       MGG.upper_limit = @upper_limit
       MGG.evaluation_function = @evaluation_function
       MGG.crossover = :blx_alpha
+
+      @history = History.new
     end
 
     def initialize_population
@@ -50,13 +54,17 @@ module Genalgo
         n_pop: @n_pop, n_dim: @n_dim, upper_limit: @upper_limit, lower_limit: @lower_limit
       )
       evaluate_population
-      @_evals = @n_pop
+      @evals = @n_pop
     end
 
     def evaluate_population
       @population.each do |individual|
         individual.fitness = @evaluation_function.call(individual.chromosome)
       end
+    end
+
+    def add_history
+      @history.add(@population.best_individual, @evals)
     end
   end
 end
