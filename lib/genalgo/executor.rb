@@ -7,7 +7,7 @@ require_relative "history"
 module Genalgo
   # Executor
   class Executor
-    attr_accessor :n_pop, :n_dim, :n_eval, :evaluation_function, :seed, :upper_limit, :lower_limit
+    attr_accessor :n_pop, :n_dim, :n_eval, :evaluation_function, :seed, :upper_limit, :lower_limit, :crossover
     attr_reader :population, :history
 
     def initialize(params = {})
@@ -18,6 +18,7 @@ module Genalgo
       @evaluation_function = params[:evaluation_function]
       @upper_limit = params[:upper_limit]
       @lower_limit = params[:lower_limit]
+      @crossover = params[:crossover] || :blx_alpha
     end
 
     def execute
@@ -44,7 +45,8 @@ module Genalgo
       MGG.lower_limit = @lower_limit
       MGG.upper_limit = @upper_limit
       MGG.evaluation_function = @evaluation_function
-      MGG.crossover = :blx_alpha
+      MGG.n_dim = @n_dim
+      MGG.crossover = @crossover
 
       @history = History.new
     end

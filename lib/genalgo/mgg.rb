@@ -8,10 +8,10 @@ module Genalgo
     ALPHA = 0.36
 
     class << self
-      attr_accessor :lower_limit, :upper_limit, :evaluation_function, :crossover
+      attr_accessor :n_dim, :lower_limit, :upper_limit, :evaluation_function, :crossover
 
       def evaluations_per_generation
-        { blx_alpha: 2 }[crossover]
+        { blx_alpha: 2, simplex: 2 }[crossover]
       end
 
       def next_generation(population)
@@ -24,10 +24,21 @@ module Genalgo
           evaluate_individuals([child1, child2])
           selected_individuals = selection([parent1, parent2, child1, child2], 2)
           population.add(selected_individuals)
+        elsif crossover == :simplex
+          parents = population.pop(@n_dim + 1)
+          child1 = simplex(parents)
+          child2 = simplex(parents)
+          evaluate_individuals([child1, child2])
+          parent1, parent2 = parents.sample(2)
+          selected_individuals = parents - [parent1, parent2]
+          selected_individuals += selection([parent1, parent2, child1, child2], 2)
+          population.add(selected_individuals)
         end
 
         population
       end
+
+      private
 
       # BLX-alpha
       # @param parent1 [Genalgo::Individual]
@@ -43,6 +54,26 @@ module Genalgo
         end
 
         child = parent1.dup
+        child.chromosome = new_chromosome
+        child
+      end
+
+      # Simplex
+      # @param parents [Array<Genalgo::Individual>]
+      # @return [Genalgo::Individual]
+      def simplex(parents)
+        eps = Math.sqrt(@n_dim + 2)
+        mean = parents.map(&:chromosome).transpose.map { |x| x.sum / x.size }
+        xs = parents.map do |parent|
+          parent.chromosome.zip(mean).map { |x, y| y + eps * (x - y) }
+        end
+        cs = Array.new(@n_dim + 1) { Array.new(@n_dim, 0.0) }
+        (1..@n_dim).each do |i|
+          r = Random.rand**(1.0 / i)
+          cs[i] = xs[i - 1].zip(xs[i], cs[i - 1]).map { |x, y, z| r * (x - y + z) }
+        end
+        new_chromosome = xs.last.zip(cs.last).map { |x, y| x + y }
+        child = parents.first.dup
         child.chromosome = new_chromosome
         child
       end

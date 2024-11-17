@@ -4,7 +4,7 @@ Real-Coded Genetic Algorithm
 
 Generation Alternation Model: Minimal Generation Gap (MGG)
 
-Crossover: BLX-alpha
+Crossover: BLX-alpha, Simplex
 
 ## Installation
 
@@ -37,6 +37,7 @@ executor.n_eval = 10000
 executor.upper_limit = 100.0
 executor.lower_limit = -100.0
 executor.evaluation_function = lambda { |x| sphere(x) }
+executor.crossover = :blx_alpha
 
 executor.execute
 
