@@ -16,5 +16,16 @@ module Genalgo
     def initialize_chromosome
       @chromosome = Array.new(@n_dim) { Random.rand * (@upper_limit - @lower_limit) + @lower_limit }
     end
+
+    def dup
+      copy = Individual.new(
+        n_dim: @n_dim,
+        upper_limit: @upper_limit,
+        lower_limit: @lower_limit,
+        chromosome: @chromosome.dup
+      )
+      copy.fitness = @fitness
+      copy
+    end
   end
 end

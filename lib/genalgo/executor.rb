@@ -34,6 +34,8 @@ module Genalgo
     end
 
     def best_individual
+      return nil unless @population
+
       @population.best_individual
     end
 

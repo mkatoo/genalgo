@@ -7,7 +7,7 @@ module Genalgo
   class History
     include Enumerable
     extend Forwardable
-    def_delegators :@history, :each, :first, :last
+    def_delegators :@history, :each, :first, :last, :size, :empty?
 
     def initialize
       @history = []

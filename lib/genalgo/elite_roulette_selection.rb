@@ -11,6 +11,8 @@ module Genalgo
     end
 
     def select(individuals, size)
+      return [] if size.zero?
+
       sorted_individuals = individuals.sort_by(&:fitness)
       elite = sorted_individuals.first
       remaining_individuals = sorted_individuals[1..]

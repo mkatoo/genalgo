@@ -23,13 +23,8 @@ module Genalgo
     private
 
     def blend_genes(gene_x, gene_y, bounds)
-      if gene_x > gene_y
-        x_val = gene_y
-        y_val = gene_x
-      else
-        x_val = gene_x
-        y_val = gene_y
-      end
+      x_val = [gene_x, gene_y].min
+      y_val = [gene_x, gene_y].max
 
       width = y_val - x_val
       r_upper = [y_val + @alpha * width, bounds[:upper]].min

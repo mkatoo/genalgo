@@ -60,5 +60,22 @@ module Genalgo
     def each(&block)
       @population.each(&block)
     end
+
+    def size
+      @population.size
+    end
+
+    def dup
+      new_pop = Population.new(
+        n_pop: 1, # Start with minimal size
+        n_dim: @n_dim,
+        lower_limit: @lower_limit,
+        upper_limit: @upper_limit
+      )
+
+      new_pop.delete(new_pop.to_a)
+      new_pop.add(@population.map(&:dup))
+      new_pop
+    end
   end
 end
