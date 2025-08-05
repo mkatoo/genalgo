@@ -39,25 +39,25 @@ RSpec.describe Genalgo::Population do
       it "raises error for zero population size" do
         expect do
           described_class.new(n_pop: 0, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error("Population size is not enough.")
+        end.to raise_error(ArgumentError, "Population size (n_pop) must be at least 1, got 0")
       end
 
       it "raises error for negative population size" do
         expect do
           described_class.new(n_pop: -1, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error("Population size is not enough.")
+        end.to raise_error(ArgumentError, "Population size (n_pop) must be at least 1, got -1")
       end
 
       it "raises error for zero dimensions" do
         expect do
           described_class.new(n_pop: n_pop, n_dim: 0, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error("Dimension is not enough.")
+        end.to raise_error(ArgumentError, "Dimension (n_dim) must be at least 1, got 0")
       end
 
       it "raises error for negative dimensions" do
         expect do
           described_class.new(n_pop: n_pop, n_dim: -1, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error("Dimension is not enough.")
+        end.to raise_error(ArgumentError, "Dimension (n_dim) must be at least 1, got -1")
       end
     end
   end

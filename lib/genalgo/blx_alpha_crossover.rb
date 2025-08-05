@@ -20,6 +20,10 @@ module Genalgo
       child
     end
 
+    def evaluations_per_generation
+      2 # BLX-alpha typically creates 2 children per generation
+    end
+
     private
 
     def blend_genes(gene_x, gene_y, bounds)

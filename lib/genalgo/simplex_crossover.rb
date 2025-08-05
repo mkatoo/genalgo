@@ -16,6 +16,10 @@ module Genalgo
       create_child(parents, xs_values, cs_values)
     end
 
+    def evaluations_per_generation
+      2 # Simplex also typically creates 2 children per generation
+    end
+
     private
 
     def calculate_epsilon

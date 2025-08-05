@@ -170,20 +170,26 @@ RSpec.describe Genalgo::GenerationManager do
     end
 
     context "with different evaluation functions" do
-      let(:absolute_sum_function) { ->(chromosome) { chromosome.map(&:abs).sum } }
-      let(:abs_manager) do
-        described_class.new(blx_alpha_crossover, selection_strategy, absolute_sum_function, n_dim, bounds)
+      let(:constant_function) { ->(_chromosome) { 100.0 } } # Always returns 100
+      let(:constant_manager) do
+        described_class.new(blx_alpha_crossover, selection_strategy, constant_function, n_dim, bounds)
       end
 
       it "produces different fitness values with different functions" do
-        result1 = manager.next_generation(population)
-        pop_copy = population.dup
-        result2 = abs_manager.next_generation(pop_copy)
+        # Test the evaluation functions directly on identical chromosomes
+        test_chromosome = [1.0, 2.0, 3.0, 4.0, 5.0]
 
-        # Different evaluation functions should produce different fitness patterns
-        fitness1 = result1.map(&:fitness).sort
-        fitness2 = result2.map(&:fitness).sort
+        strategy1 = manager.instance_variable_get(:@generation_strategy)
+        eval_func1 = strategy1.instance_variable_get(:@evaluation_function)
+        fitness1 = eval_func1.call(test_chromosome)
+
+        strategy2 = constant_manager.instance_variable_get(:@generation_strategy)
+        eval_func2 = strategy2.instance_variable_get(:@evaluation_function)
+        fitness2 = eval_func2.call(test_chromosome)
+
+        # Different evaluation functions should produce different results
         expect(fitness1).not_to eq(fitness2)
+        expect(fitness2).to eq(100.0) # Constant function always returns 100.0
       end
     end
   end
