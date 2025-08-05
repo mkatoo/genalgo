@@ -33,7 +33,7 @@ end
 executor = Genalgo::Executor.new
 executor.n_pop = 100
 executor.n_dim = 10
-executor.n_eval = 10000
+executor.n_eval = 100000
 executor.upper_limit = 100.0
 executor.lower_limit = -100.0
 executor.evaluation_function = lambda { |x| sphere(x) }
