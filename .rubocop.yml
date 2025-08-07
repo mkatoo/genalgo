@@ -1,5 +1,6 @@
 AllCops:
   TargetRubyVersion: 3.0
+  NewCops: enable
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
@@ -22,3 +23,6 @@ Metrics/MethodLength:
 Metrics/AbcSize:
   Exclude:
     - "spec/**/*"
+
+Gemspec/RequireMFA:
+  Enabled: false
