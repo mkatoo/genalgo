@@ -22,15 +22,15 @@ module Genalgo
     end
 
     def clamp_chromosome!(chromosome)
-      chromosome.map! { |gene| [[gene, @lower_limit].max, @upper_limit].min }
+      chromosome.map! { |gene| gene.clamp(@lower_limit, @upper_limit) }
     end
 
     def clamp_chromosome(chromosome)
-      chromosome.map { |gene| [[gene, @lower_limit].max, @upper_limit].min }
+      chromosome.map { |gene| gene.clamp(@lower_limit, @upper_limit) }
     end
 
     def random_chromosome
-      Array.new(@n_dim) { Random.rand * (@upper_limit - @lower_limit) + @lower_limit }
+      Array.new(@n_dim) { (Random.rand * (@upper_limit - @lower_limit)) + @lower_limit }
     end
 
     private

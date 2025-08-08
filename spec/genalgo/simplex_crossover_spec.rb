@@ -189,7 +189,7 @@ RSpec.describe Genalgo::SimplexCrossover do
         let(:dim_crossover) { described_class.new(dim) }
         let(:dim_parents) do
           Array.new(dim + 1) do |i|
-            chromosome = Array.new(dim) { |j| i + j * 0.5 }
+            chromosome = Array.new(dim) { |j| i + (j * 0.5) }
             create_individual(chromosome)
           end
         end

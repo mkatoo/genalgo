@@ -32,19 +32,30 @@ module Genalgo
 
     def transform_parents(parents, mean, eps)
       parents.map do |parent|
-        parent.chromosome.zip(mean).map { |gene, mean_gene| mean_gene + eps * (gene - mean_gene) }
+        parent.chromosome.zip(mean).map { |gene, mean_gene| mean_gene + (eps * (gene - mean_gene)) }
       end
     end
 
     def generate_simplex_coefficients(xs_values)
-      cs_values = Array.new(@n_dim + 1) { Array.new(@n_dim, 0.0) }
+      cs_values = initialize_coefficient_array
+
       (1..@n_dim).each do |index|
-        random_factor = Random.rand**(1.0 / index)
-        cs_values[index] = xs_values[index - 1].zip(xs_values[index], cs_values[index - 1]).map do |x_val, y_val, z_val|
-          random_factor * (x_val - y_val + z_val)
-        end
+        cs_values[index] = calculate_coefficient_for_dimension(xs_values, cs_values, index)
       end
+
       cs_values
+    end
+
+    def initialize_coefficient_array
+      Array.new(@n_dim + 1) { Array.new(@n_dim, 0.0) }
+    end
+
+    def calculate_coefficient_for_dimension(xs_values, cs_values, index)
+      random_factor = Random.rand**(1.0 / index)
+
+      xs_values[index - 1].zip(xs_values[index], cs_values[index - 1]).map do |x_val, y_val, z_val|
+        random_factor * (x_val - y_val + z_val)
+      end
     end
 
     def create_child(parents, xs_values, cs_values)

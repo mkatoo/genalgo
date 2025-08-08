@@ -31,9 +31,9 @@ module Genalgo
       y_val = [gene_x, gene_y].max
 
       width = y_val - x_val
-      r_upper = [y_val + @alpha * width, bounds[:upper]].min
-      r_lower = [x_val - @alpha * width, bounds[:lower]].max
-      Random.rand * (r_upper - r_lower) + r_lower
+      r_upper = [y_val + (@alpha * width), bounds[:upper]].min
+      r_lower = [x_val - (@alpha * width), bounds[:lower]].max
+      (Random.rand * (r_upper - r_lower)) + r_lower
     end
   end
 end

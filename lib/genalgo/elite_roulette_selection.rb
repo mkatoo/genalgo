@@ -38,7 +38,7 @@ module Genalgo
       width = 1 if width.zero?
 
       individuals.map do |individual|
-        width / (individual.fitness - individuals.first.fitness + @scaling_factor * width)
+        width / (individual.fitness - individuals.first.fitness + (@scaling_factor * width))
       end
     end
 
@@ -48,7 +48,7 @@ module Genalgo
     end
 
     def random_choice(size, probs)
-      cumulative_probs = probs.inject([0.0]) { |acc, p| acc << acc.last + p }
+      cumulative_probs = probs.inject([0.0]) { |acc, p| acc << (acc.last + p) }
 
       size.times.map do
         r = Random.rand
