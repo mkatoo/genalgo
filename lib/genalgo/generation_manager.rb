@@ -32,7 +32,11 @@ module Genalgo
       elsif crossover_strategy.is_a?(SimplexCrossover)
         SimplexGenerationStrategy.new(crossover_strategy, selection_strategy, evaluation_function, n_dim, bounds)
       else
-        raise ArgumentError, "Unknown crossover strategy: #{crossover_strategy.class}"
+        raise Genalgo::StrategyError.new("Unknown crossover strategy: #{crossover_strategy.class}",
+                                         context: {
+                                           strategy_class: crossover_strategy.class,
+                                           available_strategies: %w[BlxAlphaCrossover SimplexCrossover]
+                                         })
       end
     end
   end

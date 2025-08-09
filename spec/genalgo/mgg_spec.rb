@@ -136,7 +136,7 @@ RSpec.describe Genalgo::MGG do
 
       it "raises ArgumentError for unknown crossover type" do
         expect { described_class.next_generation(population) }.to raise_error(
-          ArgumentError, /Unknown crossover type: unknown_type/
+          Genalgo::StrategyError, /Unknown crossover type: unknown_type/
         )
       end
     end

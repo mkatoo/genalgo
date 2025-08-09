@@ -86,27 +86,63 @@ module Genalgo
     end
 
     def validate_population_size!
-      raise ArgumentError, "Population size (n_pop) cannot be nil" if @n_pop.nil?
-      raise TypeError, "Population size (n_pop) must be an integer, got #{@n_pop.class}" unless @n_pop.is_a?(Integer)
-      raise ArgumentError, "Population size (n_pop) must be at least 1, got #{@n_pop}" if @n_pop < 1
+      if @n_pop.nil?
+        raise Genalgo::PopulationError.new("Population size (n_pop) cannot be nil",
+                                           context: { n_pop: @n_pop })
+      end
+
+      unless @n_pop.is_a?(Integer)
+        raise Genalgo::PopulationError.new("Population size (n_pop) must be an integer, got #{@n_pop.class}",
+                                           context: { n_pop: @n_pop, expected_type: "Integer" })
+      end
+
+      return unless @n_pop < 1
+
+      raise Genalgo::PopulationError.new("Population size (n_pop) must be at least 1, got #{@n_pop}",
+                                         context: { n_pop: @n_pop, minimum_value: 1 })
     end
 
     def validate_dimension!
-      raise ArgumentError, "Dimension (n_dim) cannot be nil" if @n_dim.nil?
-      raise TypeError, "Dimension (n_dim) must be an integer, got #{@n_dim.class}" unless @n_dim.is_a?(Integer)
-      raise ArgumentError, "Dimension (n_dim) must be at least 1, got #{@n_dim}" if @n_dim < 1
+      if @n_dim.nil?
+        raise Genalgo::ConfigurationError.new("Dimension (n_dim) cannot be nil",
+                                              context: { n_dim: @n_dim })
+      end
+
+      unless @n_dim.is_a?(Integer)
+        raise Genalgo::ConfigurationError.new("Dimension (n_dim) must be an integer, got #{@n_dim.class}",
+                                              context: { n_dim: @n_dim, expected_type: "Integer" })
+      end
+
+      return unless @n_dim < 1
+
+      raise Genalgo::ConfigurationError.new("Dimension (n_dim) must be at least 1, got #{@n_dim}",
+                                            context: { n_dim: @n_dim, minimum_value: 1 })
     end
 
     def validate_boundary_limits!
-      raise ArgumentError, "Lower limit cannot be nil" if @lower_limit.nil?
-      raise ArgumentError, "Upper limit cannot be nil" if @upper_limit.nil?
-      raise TypeError, "Lower limit must be numeric, got #{@lower_limit.class}" unless @lower_limit.is_a?(Numeric)
-      raise TypeError, "Upper limit must be numeric, got #{@upper_limit.class}" unless @upper_limit.is_a?(Numeric)
+      if @lower_limit.nil?
+        raise Genalgo::ConfigurationError.new("Lower limit cannot be nil",
+                                              context: { lower_limit: @lower_limit })
+      end
+      if @upper_limit.nil?
+        raise Genalgo::ConfigurationError.new("Upper limit cannot be nil",
+                                              context: { upper_limit: @upper_limit })
+      end
+      unless @lower_limit.is_a?(Numeric)
+        raise Genalgo::ConfigurationError.new("Lower limit must be numeric, got #{@lower_limit.class}",
+                                              context: { lower_limit: @lower_limit, expected_type: "Numeric" })
+      end
+      unless @upper_limit.is_a?(Numeric)
+        raise Genalgo::ConfigurationError.new("Upper limit must be numeric, got #{@upper_limit.class}",
+                                              context: { upper_limit: @upper_limit, expected_type: "Numeric" })
+      end
 
       return unless @upper_limit <= @lower_limit
 
-      raise ArgumentError,
-            "Upper limit (#{@upper_limit}) must be greater than lower limit (#{@lower_limit})"
+      raise Genalgo::ConfigurationError.new(
+        "Upper limit (#{@upper_limit}) must be greater than lower limit (#{@lower_limit})",
+        context: { upper_limit: @upper_limit, lower_limit: @lower_limit }
+      )
     end
   end
 end

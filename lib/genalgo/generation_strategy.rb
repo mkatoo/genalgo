@@ -13,8 +13,9 @@ module Genalgo
     end
 
     # Abstract method to be implemented by subclasses
-    def next_generation(population)
-      raise NotImplementedError, "Subclasses must implement next_generation method"
+    def next_generation(_population)
+      raise Genalgo::StrategyError.new("Subclasses must implement next_generation method",
+                                       context: { class: self.class, method: "next_generation" })
     end
 
     # Number of evaluations performed per generation

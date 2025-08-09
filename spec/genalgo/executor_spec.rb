@@ -205,7 +205,7 @@ RSpec.describe Genalgo::Executor do
       let(:incomplete_executor) { described_class.new(n_pop: 10) }
 
       it "raises error with incomplete configuration" do
-        expect { incomplete_executor.execute }.to raise_error(ArgumentError)
+        expect { incomplete_executor.execute }.to raise_error(Genalgo::ConfigurationError)
       end
     end
   end

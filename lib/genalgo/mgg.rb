@@ -47,7 +47,8 @@ module Genalgo
         when :simplex
           SimplexCrossover.new(@n_dim)
         else
-          raise ArgumentError, "Unknown crossover type: #{@crossover}"
+          raise Genalgo::StrategyError.new("Unknown crossover type: #{@crossover}",
+                                           context: { crossover: @crossover, available_types: %i[blx_alpha simplex] })
         end
       end
     end

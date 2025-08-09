@@ -108,7 +108,7 @@ RSpec.describe Genalgo::GenerationManager do
 
       it "raises ArgumentError for unknown crossover strategy" do
         expect { manager.next_generation(population) }.to raise_error(
-          ArgumentError, /Unknown crossover strategy/
+          Genalgo::StrategyError, /Unknown crossover strategy/
         )
       end
     end
