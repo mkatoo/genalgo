@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "configuration"
+require_relative "mutable_configuration"
 require_relative "population"
 require_relative "mgg"
 require_relative "history"
@@ -7,28 +9,90 @@ require_relative "history"
 module Genalgo
   # Executor
   class Executor
-    attr_accessor :n_pop, :n_dim, :n_eval, :evaluation_function, :seed, :upper_limit, :lower_limit, :crossover
-    attr_reader :population, :history
+    attr_reader :population, :history, :configuration
 
     def initialize(params = {})
-      @n_pop = params[:n_pop]
-      @n_dim = params[:n_dim]
-      @n_eval = params[:n_eval]
-      @seed = params[:seed] || Random.new_seed
-      @evaluation_function = params[:evaluation_function]
-      @upper_limit = params[:upper_limit]
-      @lower_limit = params[:lower_limit]
-      @crossover = params[:crossover] || :blx_alpha
+      if params.is_a?(Configuration)
+        @configuration = params
+      else
+        @configuration = MutableConfiguration.new(params)
+      end
+    end
+
+    # Backward compatibility: delegate attribute access to configuration
+    def n_pop
+      @configuration.n_pop
+    end
+
+    def n_pop=(value)
+      @configuration.n_pop = value
+    end
+
+    def n_dim
+      @configuration.n_dim
+    end
+
+    def n_dim=(value)
+      @configuration.n_dim = value
+    end
+
+    def n_eval
+      @configuration.n_eval
+    end
+
+    def n_eval=(value)
+      @configuration.n_eval = value
+    end
+
+    def evaluation_function
+      @configuration.evaluation_function
+    end
+
+    def evaluation_function=(value)
+      @configuration.evaluation_function = value
+    end
+
+    def seed
+      @configuration.seed
+    end
+
+    def seed=(value)
+      @configuration.seed = value
+    end
+
+    def upper_limit
+      @configuration.upper_limit
+    end
+
+    def upper_limit=(value)
+      @configuration.upper_limit = value
+    end
+
+    def lower_limit
+      @configuration.lower_limit
+    end
+
+    def lower_limit=(value)
+      @configuration.lower_limit = value
+    end
+
+    def crossover
+      @configuration.crossover
+    end
+
+    def crossover=(value)
+      @configuration.crossover = value
     end
 
     def execute
+      @configuration.validate_before_execution!
       setup
       initialize_population
       add_history
 
-      while @evals + MGG.evaluations_per_generation <= @n_eval
-        @population = MGG.next_generation(@population)
-        @evals += MGG.evaluations_per_generation
+      while @evals + MGG.evaluations_per_generation(@configuration) <= @configuration.n_eval
+        @population = MGG.next_generation(@population, @configuration)
+        @evals += MGG.evaluations_per_generation(@configuration)
         add_history
       end
     end
@@ -42,28 +106,27 @@ module Genalgo
     private
 
     def setup
-      Random.srand(@seed)
+      Random.srand(@configuration.seed)
 
-      MGG.lower_limit = @lower_limit
-      MGG.upper_limit = @upper_limit
-      MGG.evaluation_function = @evaluation_function
-      MGG.n_dim = @n_dim
-      MGG.crossover = @crossover
+      # Set MGG attributes for backward compatibility
+      MGG.lower_limit = @configuration.lower_limit
+      MGG.upper_limit = @configuration.upper_limit
+      MGG.evaluation_function = @configuration.evaluation_function
+      MGG.n_dim = @configuration.n_dim
+      MGG.crossover = @configuration.crossover
 
       @history = History.new
     end
 
     def initialize_population
-      @population = Population.new(
-        n_pop: @n_pop, n_dim: @n_dim, upper_limit: @upper_limit, lower_limit: @lower_limit
-      )
+      @population = Population.new(configuration: @configuration)
       evaluate_population
-      @evals = @n_pop
+      @evals = @configuration.n_pop
     end
 
     def evaluate_population
       @population.each do |individual|
-        individual.fitness = @evaluation_function.call(individual.chromosome)
+        individual.fitness = @configuration.evaluation_function.call(individual.chromosome)
       end
     end
 

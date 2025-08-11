@@ -7,11 +7,21 @@ module Genalgo
   class Population
     include Enumerable
 
-    def initialize(n_pop:, n_dim:, lower_limit:, upper_limit:, skip_initialization: false)
-      @n_pop = n_pop
-      @n_dim = n_dim
-      @lower_limit = lower_limit
-      @upper_limit = upper_limit
+    def initialize(n_pop: nil, n_dim: nil, lower_limit: nil, upper_limit: nil, skip_initialization: false,
+                   configuration: nil)
+      if configuration
+        @configuration = configuration
+        @n_pop = configuration.n_pop
+        @n_dim = configuration.n_dim
+        @lower_limit = configuration.lower_limit
+        @upper_limit = configuration.upper_limit
+      else
+        # Legacy initialization for backward compatibility
+        @n_pop = n_pop
+        @n_dim = n_dim
+        @lower_limit = lower_limit
+        @upper_limit = upper_limit
+      end
 
       initialize_population unless skip_initialization
     end
@@ -63,25 +73,40 @@ module Genalgo
     end
 
     def dup
-      new_pop = Population.new(
-        n_pop: @n_pop,
-        n_dim: @n_dim,
-        lower_limit: @lower_limit,
-        upper_limit: @upper_limit,
-        skip_initialization: true
-      )
+      new_pop = if @configuration
+                  Population.new(
+                    configuration: @configuration,
+                    skip_initialization: true
+                  )
+                else
+                  Population.new(
+                    n_pop: @n_pop,
+                    n_dim: @n_dim,
+                    lower_limit: @lower_limit,
+                    upper_limit: @upper_limit,
+                    skip_initialization: true
+                  )
+                end
 
-      new_pop.instance_variable_set(:@population, @population.map(&:dup))
+      new_pop.set_population(@population.map(&:dup))
       new_pop
     end
 
-    private
+    protected
+
+    def set_population(population_array)
+      @population = population_array
+    end
 
     def initialize_population
-      validate_parameters!
+      validate_parameters! unless @configuration
 
       @population = Array.new(@n_pop) do
-        Individual.new(n_dim: @n_dim, lower_limit: @lower_limit, upper_limit: @upper_limit)
+        if @configuration
+          Individual.new(configuration: @configuration)
+        else
+          Individual.new(n_dim: @n_dim, lower_limit: @lower_limit, upper_limit: @upper_limit)
+        end
       end
     end
 
