@@ -12,6 +12,7 @@ module Genalgo
       @n_dim = n_dim
       @upper_limit = upper_limit
       @lower_limit = lower_limit
+      freeze
     end
 
     def within_bounds?(chromosome)
@@ -41,11 +42,6 @@ module Genalgo
     end
 
     def validate_dimension!(n_dim)
-      if n_dim.nil?
-        raise Genalgo::ConfigurationError.new("Dimension (n_dim) cannot be nil",
-                                              context: { n_dim: n_dim })
-      end
-
       unless n_dim.is_a?(Integer)
         raise Genalgo::ConfigurationError.new("Dimension (n_dim) must be an integer, got #{n_dim.class}",
                                               context: { n_dim: n_dim, expected_type: "Integer" })
@@ -58,27 +54,16 @@ module Genalgo
     end
 
     def validate_limits!(upper_limit, lower_limit)
-      validate_limit_values!(upper_limit, lower_limit)
+      validate_limit!(lower_limit, :lower_limit)
+      validate_limit!(upper_limit, :upper_limit)
       validate_limit_order!(upper_limit, lower_limit)
     end
 
-    def validate_limit_values!(upper_limit, lower_limit)
-      if lower_limit.nil?
-        raise Genalgo::ConfigurationError.new("Lower limit cannot be nil",
-                                              context: { lower_limit: lower_limit })
-      end
-      if upper_limit.nil?
-        raise Genalgo::ConfigurationError.new("Upper limit cannot be nil",
-                                              context: { upper_limit: upper_limit })
-      end
-      unless lower_limit.is_a?(Numeric)
-        raise Genalgo::ConfigurationError.new("Lower limit must be numeric, got #{lower_limit.class}",
-                                              context: { lower_limit: lower_limit, expected_type: "Numeric" })
-      end
-      return if upper_limit.is_a?(Numeric)
+    def validate_limit!(value, name)
+      return if value.is_a?(Numeric) && value.real? && value.finite?
 
-      raise Genalgo::ConfigurationError.new("Upper limit must be numeric, got #{upper_limit.class}",
-                                            context: { upper_limit: upper_limit, expected_type: "Numeric" })
+      raise Genalgo::ConfigurationError.new("#{name} must be a finite real number, got #{value.inspect}",
+                                            context: { parameter: name, value: value })
     end
 
     def validate_limit_order!(upper_limit, lower_limit)

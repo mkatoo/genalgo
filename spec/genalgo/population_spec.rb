@@ -62,6 +62,52 @@ RSpec.describe Genalgo::Population do
     end
   end
 
+  describe "validated bounds" do
+    let(:bounds) { Genalgo::Bounds.new(n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit) }
+
+    it "initializes from bounds without requiring execution settings" do
+      population = described_class.new(n_pop: 3, bounds: bounds)
+
+      expect(population.size).to eq(3)
+      expect(population.map(&:bounds)).to all(be(bounds))
+      expect(population).to all(be_within_bounds)
+    end
+
+    it "supports the configuration keyword as a compatibility entry point" do
+      configuration = Genalgo::Configuration.new(
+        n_pop: 10, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit,
+        n_eval: 10, evaluation_function: lambda(&:sum)
+      )
+      population = described_class.new(configuration: configuration)
+
+      expect(population.size).to eq(10)
+      expect(population.map(&:bounds)).to all(be(configuration.bounds_object))
+    end
+
+    it "allows equal limits through legacy initialization" do
+      population = described_class.new(n_pop: 3, n_dim: 2, lower_limit: 1.0, upper_limit: 1.0)
+
+      expect(population.map(&:chromosome)).to eq([[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]])
+    end
+
+    it "copies individuals independently while retaining their bounds and fitness" do
+      population = described_class.new(n_pop: 3, bounds: bounds)
+      population.each_with_index { |individual, index| individual.fitness = index.to_f }
+      copy = population.dup
+      original = population.first.chromosome.dup
+
+      expect(copy.map(&:fitness)).to eq(population.map(&:fitness))
+      expect(copy.map(&:bounds)).to all(be(bounds))
+      copy.first.chromosome[0] = 100.0
+      copy.first.fitness = 100.0
+      copy.pop(1)
+
+      expect(population.size).to eq(3)
+      expect(population.first.chromosome).to eq(original)
+      expect(population.first.fitness).to eq(0.0)
+    end
+  end
+
   describe "Enumerable interface" do
     subject(:population) do
       described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)

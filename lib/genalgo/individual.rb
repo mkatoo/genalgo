@@ -10,11 +10,11 @@ module Genalgo
     attr_accessor :fitness
     attr_reader :chromosome, :bounds
 
-    def initialize(n_dim: nil, upper_limit: nil, lower_limit: nil, chromosome: nil, bounds: nil, configuration: nil)
+    def initialize(chromosome: nil, bounds: nil, configuration: nil, **bound_params)
       @bounds = if configuration
                   configuration.bounds_object
                 else
-                  bounds || Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
+                  bounds || Bounds.new(n_dim: nil, upper_limit: nil, lower_limit: nil, **bound_params)
                 end
 
       if chromosome

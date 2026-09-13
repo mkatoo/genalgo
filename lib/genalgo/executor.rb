@@ -9,14 +9,10 @@ require_relative "history"
 module Genalgo
   # Executor
   class Executor
-    attr_reader :population, :history, :configuration
+    attr_reader :population, :history, :configuration, :execution_configuration
 
     def initialize(params = {})
-      if params.is_a?(Configuration)
-        @configuration = params
-      else
-        @configuration = MutableConfiguration.new(params)
-      end
+      @configuration = MutableConfiguration.new(params)
     end
 
     # Backward compatibility: delegate attribute access to configuration
@@ -85,14 +81,15 @@ module Genalgo
     end
 
     def execute
-      @configuration.validate_before_execution!
-      setup
-      initialize_population
+      configuration = @configuration.build
+      @execution_configuration = configuration
+      setup(configuration)
+      initialize_population(configuration)
       add_history
 
-      while @evals + MGG.evaluations_per_generation(@configuration) <= @configuration.n_eval
-        @population = MGG.next_generation(@population, @configuration)
-        @evals += MGG.evaluations_per_generation(@configuration)
+      while @evals + MGG.evaluations_per_generation(configuration) <= configuration.n_eval
+        @population = MGG.next_generation(@population, configuration)
+        @evals += MGG.evaluations_per_generation(configuration)
         add_history
       end
     end
@@ -105,28 +102,28 @@ module Genalgo
 
     private
 
-    def setup
-      Random.srand(@configuration.seed)
+    def setup(configuration)
+      Random.srand(configuration.seed)
 
       # Set MGG attributes for backward compatibility
-      MGG.lower_limit = @configuration.lower_limit
-      MGG.upper_limit = @configuration.upper_limit
-      MGG.evaluation_function = @configuration.evaluation_function
-      MGG.n_dim = @configuration.n_dim
-      MGG.crossover = @configuration.crossover
+      MGG.lower_limit = configuration.lower_limit
+      MGG.upper_limit = configuration.upper_limit
+      MGG.evaluation_function = configuration.evaluation_function
+      MGG.n_dim = configuration.n_dim
+      MGG.crossover = configuration.crossover
 
       @history = History.new
     end
 
-    def initialize_population
-      @population = Population.new(configuration: @configuration)
-      evaluate_population
-      @evals = @configuration.n_pop
+    def initialize_population(configuration)
+      @population = Population.new(n_pop: configuration.n_pop, bounds: configuration.bounds_object)
+      evaluate_population(configuration.evaluation_function)
+      @evals = configuration.n_pop
     end
 
-    def evaluate_population
+    def evaluate_population(evaluation_function)
       @population.each do |individual|
-        individual.fitness = @configuration.evaluation_function.call(individual.chromosome)
+        individual.fitness = evaluation_function.call(individual.chromosome)
       end
     end
 
