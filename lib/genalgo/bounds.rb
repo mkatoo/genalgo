@@ -1,78 +1,64 @@
 # frozen_string_literal: true
 
 module Genalgo
-  # Bounds class manages the boundary constraints for genetic algorithm individuals
-  # Provides validation, clamping, and chromosome generation within specified limits
+  # Immutable coordinate intervals shared by every individual in a population.
   class Bounds
-    attr_reader :n_dim, :upper_limit, :lower_limit
+    attr_reader :lower, :upper
 
-    def initialize(n_dim:, upper_limit:, lower_limit:)
-      validate_parameters!(n_dim, upper_limit, lower_limit)
-
-      @n_dim = n_dim
-      @upper_limit = upper_limit
-      @lower_limit = lower_limit
+    def initialize(lower:, upper:)
+      validate_arrays!(lower, upper)
+      lower.zip(upper).each_with_index { |(low, high), index| validate_interval!(low, high, index) }
+      @lower = lower.dup.freeze
+      @upper = upper.dup.freeze
       freeze
     end
 
-    def within_bounds?(chromosome)
-      return false unless chromosome
-      return false unless chromosome.size == @n_dim
-
-      chromosome.all? { |gene| gene >= @lower_limit && gene <= @upper_limit }
+    def n_dim
+      @lower.size
     end
 
-    def clamp_chromosome!(chromosome)
-      chromosome.map! { |gene| gene.clamp(@lower_limit, @upper_limit) }
+    def within_bounds?(chromosome)
+      return false unless valid_chromosome?(chromosome)
+
+      chromosome.each_with_index.all? { |gene, index| gene.between?(@lower[index], @upper[index]) }
     end
 
     def clamp_chromosome(chromosome)
-      chromosome.map { |gene| gene.clamp(@lower_limit, @upper_limit) }
+      unless valid_chromosome?(chromosome)
+        raise ArgumentError, "Chromosome must contain #{n_dim} finite real coordinates"
+      end
+
+      chromosome.each_with_index.map { |gene, index| gene.clamp(@lower[index], @upper[index]) }
     end
 
     def random_chromosome(random:)
-      Array.new(@n_dim) { (random.rand * (@upper_limit - @lower_limit)) + @lower_limit }
+      @lower.zip(@upper).map { |low, high| (random.rand * (high - low)) + low }
     end
 
     private
 
-    def validate_parameters!(n_dim, upper_limit, lower_limit)
-      validate_dimension!(n_dim)
-      validate_limits!(upper_limit, lower_limit)
+    def validate_arrays!(lower, upper)
+      return if lower.is_a?(Array) && upper.is_a?(Array) && !lower.empty? && lower.size == upper.size
+
+      raise ConfigurationError, "Bounds must be non-empty arrays of equal length"
     end
 
-    def validate_dimension!(n_dim)
-      unless n_dim.is_a?(Integer)
-        raise Genalgo::ConfigurationError.new("Dimension (n_dim) must be an integer, got #{n_dim.class}",
-                                              context: { n_dim: n_dim, expected_type: "Integer" })
+    def validate_interval!(lower, upper, index)
+      unless finite_real?(lower) && finite_real?(upper)
+        raise ConfigurationError.new("Bounds must be finite real numbers", context: { dimension: index })
       end
+      return if lower <= upper
 
-      return unless n_dim < 1
-
-      raise Genalgo::ConfigurationError.new("Dimension (n_dim) must be at least 1, got #{n_dim}",
-                                            context: { n_dim: n_dim, minimum_value: 1 })
+      raise ConfigurationError.new("Lower bound exceeds upper bound",
+                                   context: { dimension: index, lower: lower, upper: upper })
     end
 
-    def validate_limits!(upper_limit, lower_limit)
-      validate_limit!(lower_limit, :lower_limit)
-      validate_limit!(upper_limit, :upper_limit)
-      validate_limit_order!(upper_limit, lower_limit)
+    def finite_real?(value)
+      value.is_a?(Numeric) && value.real? && value.finite?
     end
 
-    def validate_limit!(value, name)
-      return if value.is_a?(Numeric) && value.real? && value.finite?
-
-      raise Genalgo::ConfigurationError.new("#{name} must be a finite real number, got #{value.inspect}",
-                                            context: { parameter: name, value: value })
-    end
-
-    def validate_limit_order!(upper_limit, lower_limit)
-      return unless upper_limit < lower_limit
-
-      raise Genalgo::ConfigurationError.new(
-        "Upper limit (#{upper_limit}) must be greater than or equal to lower limit (#{lower_limit})",
-        context: { upper_limit: upper_limit, lower_limit: lower_limit }
-      )
+    def valid_chromosome?(chromosome)
+      chromosome.is_a?(Array) && chromosome.size == n_dim && chromosome.all? { |gene| finite_real?(gene) }
     end
   end
 end

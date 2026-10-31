@@ -28,7 +28,7 @@ module Genalgo
         BlxAlphaGenerationStrategy.new(configuration, crossover: BlxAlphaCrossover.new(random: random), random: random)
       when :simplex
         SimplexGenerationStrategy.new(
-          configuration, crossover: SimplexCrossover.new(configuration.n_dim, random: random), random: random
+          configuration, crossover: SimplexCrossover.new(random: random), random: random
         )
       else
         raise StrategyError, "Unknown crossover type: #{configuration.crossover}"

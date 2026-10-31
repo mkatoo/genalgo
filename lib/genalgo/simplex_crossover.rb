@@ -4,24 +4,24 @@ module Genalgo
   # Implements Simplex crossover for real-coded genetic algorithms.
   # Uses n_dim+1 parents to create offspring via simplex transformation.
   class SimplexCrossover
-    def initialize(n_dim, random:)
-      @n_dim = n_dim
+    def initialize(random:)
       @random = random
     end
 
     def crossover(parents)
-      eps = calculate_epsilon
+      raise StrategyError, "Simplex requires at least two parents" if parents.empty?
+
+      n_dim = parents.first.n_dim
+      raise StrategyError, "Simplex requires #{n_dim + 1} parents" unless parents.size == n_dim + 1
+
+      eps = Math.sqrt(n_dim + 2)
       mean = calculate_mean_chromosome(parents)
       xs_values = transform_parents(parents, mean, eps)
-      cs_values = generate_simplex_coefficients(xs_values)
+      cs_values = generate_simplex_coefficients(xs_values, n_dim)
       create_child(parents, xs_values, cs_values)
     end
 
     private
-
-    def calculate_epsilon
-      Math.sqrt(@n_dim + 2)
-    end
 
     def calculate_mean_chromosome(parents)
       parents.map(&:chromosome).transpose.map { |values| values.sum / values.size }
@@ -33,18 +33,14 @@ module Genalgo
       end
     end
 
-    def generate_simplex_coefficients(xs_values)
-      cs_values = initialize_coefficient_array
+    def generate_simplex_coefficients(xs_values, n_dim)
+      cs_values = Array.new(n_dim + 1) { Array.new(n_dim, 0.0) }
 
-      (1..@n_dim).each do |index|
+      (1..n_dim).each do |index|
         cs_values[index] = calculate_coefficient_for_dimension(xs_values, cs_values, index)
       end
 
       cs_values
-    end
-
-    def initialize_coefficient_array
-      Array.new(@n_dim + 1) { Array.new(@n_dim, 0.0) }
     end
 
     def calculate_coefficient_for_dimension(xs_values, cs_values, index)

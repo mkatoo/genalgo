@@ -6,11 +6,12 @@ RSpec.describe Genalgo::Population do
   let(:n_dim) { 5 }
   let(:lower_limit) { -10.0 }
   let(:upper_limit) { 10.0 }
+  let(:bounds) { Genalgo::Bounds.new(lower: Array.new(n_dim, lower_limit), upper: Array.new(n_dim, upper_limit)) }
 
   describe "#initialize" do
     context "with valid parameters" do
       subject(:population) do
-        described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+        described_class.new(n_pop: n_pop, bounds: bounds, random: random)
       end
 
       it "creates the correct number of individuals" do
@@ -39,33 +40,19 @@ RSpec.describe Genalgo::Population do
     context "with invalid parameters" do
       it "raises error for zero population size" do
         expect do
-          described_class.new(n_pop: 0, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+          described_class.new(n_pop: 0, bounds: bounds, random: random)
         end.to raise_error(Genalgo::PopulationError, /Population size \(n_pop\) must be at least 1, got 0/)
       end
 
       it "raises error for negative population size" do
         expect do
-          described_class.new(n_pop: -1, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+          described_class.new(n_pop: -1, bounds: bounds, random: random)
         end.to raise_error(Genalgo::PopulationError, /Population size \(n_pop\) must be at least 1, got -1/)
-      end
-
-      it "raises error for zero dimensions" do
-        expect do
-          described_class.new(n_pop: n_pop, n_dim: 0, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error(Genalgo::ConfigurationError, /Dimension \(n_dim\) must be at least 1, got 0/)
-      end
-
-      it "raises error for negative dimensions" do
-        expect do
-          described_class.new(n_pop: n_pop, n_dim: -1, lower_limit: lower_limit, upper_limit: upper_limit)
-        end.to raise_error(Genalgo::ConfigurationError, /Dimension \(n_dim\) must be at least 1, got -1/)
       end
     end
   end
 
   describe "validated bounds" do
-    let(:bounds) { Genalgo::Bounds.new(n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit) }
-
     it "initializes from bounds without requiring execution settings" do
       population = described_class.new(n_pop: 3, bounds: bounds)
 
@@ -74,8 +61,8 @@ RSpec.describe Genalgo::Population do
       expect(population).to all(be_within_bounds)
     end
 
-    it "allows equal limits through legacy initialization" do
-      population = described_class.new(n_pop: 3, n_dim: 2, lower_limit: 1.0, upper_limit: 1.0)
+    it "supports fixed coordinates" do
+      population = described_class.new(n_pop: 3, bounds: Genalgo::Bounds.new(lower: [1.0, 1.0], upper: [1.0, 1.0]))
 
       expect(population.map(&:chromosome)).to eq([[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]])
     end
@@ -100,7 +87,7 @@ RSpec.describe Genalgo::Population do
 
   describe "Enumerable interface" do
     subject(:population) do
-      described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: n_pop, bounds: bounds, random: random)
     end
 
     it "includes Enumerable module" do
@@ -130,13 +117,13 @@ RSpec.describe Genalgo::Population do
 
   describe "#add" do
     subject(:population) do
-      described_class.new(n_pop: 5, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: 5, bounds: bounds, random: random)
     end
 
     let(:new_individuals) do
       [
-        Genalgo::Individual.new(n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit),
-        Genalgo::Individual.new(n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+        Genalgo::Individual.new(bounds: bounds, chromosome: Array.new(n_dim, 0.0)),
+        Genalgo::Individual.new(bounds: bounds, chromosome: Array.new(n_dim, 0.0))
       ]
     end
 
@@ -160,7 +147,7 @@ RSpec.describe Genalgo::Population do
 
   describe "#sample" do
     subject(:population) do
-      described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: n_pop, bounds: bounds, random: random)
     end
 
     it "returns the requested number of individuals" do
@@ -201,7 +188,7 @@ RSpec.describe Genalgo::Population do
 
   describe "#delete" do
     subject(:population) do
-      described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: n_pop, bounds: bounds, random: random)
     end
 
     let(:individuals_to_delete) { population.sample(3, random: random) }
@@ -234,7 +221,7 @@ RSpec.describe Genalgo::Population do
 
   describe "#pop" do
     subject(:population) do
-      described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: n_pop, bounds: bounds, random: random)
     end
 
     it "removes and returns the requested number of individuals" do
@@ -260,7 +247,7 @@ RSpec.describe Genalgo::Population do
 
   describe "#best_individual" do
     subject(:population) do
-      described_class.new(n_pop: 5, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: 5, bounds: bounds, random: random)
     end
 
     before do
@@ -281,7 +268,7 @@ RSpec.describe Genalgo::Population do
 
     context "with no fitness values set" do
       subject(:population_no_fitness) do
-        described_class.new(n_pop: 3, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+        described_class.new(n_pop: 3, bounds: bounds, random: random)
       end
 
       it "handles nil fitness values" do
@@ -306,7 +293,7 @@ RSpec.describe Genalgo::Population do
 
   describe "population consistency" do
     subject(:population) do
-      described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
+      described_class.new(n_pop: n_pop, bounds: bounds, random: random)
     end
 
     it "maintains all individuals as unique objects" do

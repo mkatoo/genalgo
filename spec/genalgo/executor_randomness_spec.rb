@@ -3,7 +3,7 @@
 RSpec.describe Genalgo::Executor, "randomness isolation" do
   let(:params) do
     {
-      n_pop: 6, n_dim: 2, n_eval: 20, lower_limit: -1.0, upper_limit: 1.0,
+      n_pop: 6, n_eval: 20, bounds: Genalgo::Bounds.new(lower: [-1.0, -1.0], upper: [1.0, 1.0]),
       evaluation_function: ->(chromosome) { chromosome.sum { |gene| gene * gene } }, seed: 14
     }
   end
@@ -49,7 +49,8 @@ RSpec.describe Genalgo::Executor, "randomness isolation" do
           baseline = described_class.new(settings)
           baseline.execute
           nested = described_class.new(settings.merge(
-                                         n_pop: 3, n_dim: 1, n_eval: 7, seed: 999,
+                                         n_pop: 3, n_eval: 7, seed: 999,
+                                         bounds: Genalgo::Bounds.new(lower: [-1.0], upper: [1.0]),
                                          crossover: crossover == :simplex ? :blx_alpha : :simplex
                                        ))
           calls = 0

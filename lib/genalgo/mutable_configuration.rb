@@ -14,7 +14,7 @@ module Genalgo
     end
 
     def initialize(params = {})
-      @params = params.to_h.slice(*Configuration::PARAMETERS)
+      @params = params.to_h.dup
       self.seed = @params[:seed]
       self.crossover = @params[:crossover]
     end
@@ -27,27 +27,16 @@ module Genalgo
       @params[:crossover] = value.nil? ? Configuration::DEFAULT_VALUES[:crossover] : value
     end
 
-    def bounds
-      { upper: upper_limit, lower: lower_limit }
-    end
-
-    def bounds_object
-      Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-    end
-
     def complete?
       Configuration::REQUIRED_PARAMETERS.all? { |name| !@params[name].nil? }
     end
 
     def to_h
-      Configuration::PARAMETERS.to_h { |name| [name, @params[name]] }
+      @params.dup
     end
 
     def build
       Configuration.new(to_h)
     end
-
-    alias validate_before_execution! build
-    alias validate_all_parameters! build
   end
 end

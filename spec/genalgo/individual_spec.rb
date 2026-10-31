@@ -1,170 +1,59 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::Individual do
-  let(:n_dim) { 5 }
-  let(:upper_limit) { 10.0 }
-  let(:lower_limit) { -5.0 }
-  let(:random) { Random.new(123) }
+  let(:bounds) { Genalgo::Bounds.new(lower: [-1.0, 10.0, 3.0], upper: [1.0, 20.0, 3.0]) }
+  subject(:individual) { described_class.new(bounds: bounds, chromosome: [0.0, 15.0, 3.0]) }
 
-  describe "#initialize" do
-    context "with default parameters" do
-      subject(:individual) do
-        described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-      end
+  it "owns a chromosome within shared bounds and has no fitness before evaluation" do
+    expect(individual.bounds).to be(bounds)
+    expect(individual.n_dim).to eq(3)
+    expect(individual).to be_within_bounds
+    expect(individual.fitness).to be_nil
+  end
 
-      it "sets the correct dimension" do
-        expect(individual.chromosome.size).to eq(n_dim)
-      end
+  it "copies the supplied chromosome so callers cannot mutate it indirectly" do
+    chromosome = [0.0, 15.0, 3.0]
+    individual = described_class.new(bounds: bounds, chromosome: chromosome)
+    chromosome[0] = 99.0
 
-      it "initializes chromosome within bounds" do
-        individual.chromosome.each do |gene|
-          expect(gene).to be_between(lower_limit, upper_limit)
-        end
-      end
+    expect(individual.chromosome).to eq([0.0, 15.0, 3.0])
+  end
 
-      it "has nil fitness initially" do
-        expect(individual.fitness).to be_nil
-      end
+  it "clamps each coordinate at initialization and assignment" do
+    individual = described_class.new(bounds: bounds, chromosome: [-2.0, 30.0, 99.0])
+    expect(individual.chromosome).to eq([-1.0, 20.0, 3.0])
 
-      it "creates an array of floats for chromosome" do
-        expect(individual.chromosome).to all(be_a(Float))
-      end
-    end
+    individual.chromosome = [2.0, 0.0, -99.0]
+    expect(individual.chromosome).to eq([1.0, 10.0, 3.0])
+  end
 
-    context "with custom chromosome" do
-      let(:custom_chromosome) { [1.0, 2.0, 3.0, 4.0, 5.0] }
-      subject(:individual) do
-        described_class.new(
-          n_dim: n_dim,
-          upper_limit: upper_limit,
-          lower_limit: lower_limit,
-          chromosome: custom_chromosome
-        )
-      end
+  it "rejects inconsistent chromosome dimensions without changing the existing chromosome" do
+    expect { individual.chromosome = [0.0] }.to raise_error(ArgumentError)
+    expect(individual.chromosome).to eq([0.0, 15.0, 3.0])
+    expect { described_class.new(bounds: bounds, chromosome: [0.0, 15.0]) }.to raise_error(ArgumentError)
+  end
 
-      it "uses the provided chromosome" do
-        expect(individual.chromosome).to eq(custom_chromosome)
-      end
-
-      it "does not overwrite the custom chromosome" do
-        expect(individual.chromosome).to be(custom_chromosome)
-      end
-    end
-
-    context "with edge case bounds" do
-      let(:zero_range_upper) { 5.0 }
-      let(:zero_range_lower) { 5.0 }
-
-      subject(:individual) do
-        described_class.new(
-          n_dim: 3,
-          upper_limit: zero_range_upper,
-          lower_limit: zero_range_lower
-        )
-      end
-
-      it "handles zero range (upper == lower)" do
-        expect(individual.chromosome).to all(eq(5.0))
-      end
+  it "allows positive, zero, and negative fitness values" do
+    [42.0, 0.0, -1.0].each do |fitness|
+      individual.fitness = fitness
+      expect(individual.fitness).to eq(fitness)
     end
   end
 
-  describe "#fitness=" do
-    subject(:individual) do
-      described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-    end
+  it "copies chromosome and fitness independently without creating a random generator" do
+    original = individual
+    original.fitness = 42.0
+    expect(Random).not_to receive(:new)
 
-    it "allows setting fitness value" do
-      individual.fitness = 42.5
-      expect(individual.fitness).to eq(42.5)
-    end
+    copy = original.dup
 
-    it "allows setting negative fitness" do
-      individual.fitness = -10.0
-      expect(individual.fitness).to eq(-10.0)
-    end
-
-    it "allows setting zero fitness" do
-      individual.fitness = 0.0
-      expect(individual.fitness).to eq(0.0)
-    end
-  end
-
-  describe "#chromosome=" do
-    subject(:individual) do
-      described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-    end
-
-    it "allows setting a new chromosome" do
-      new_chromosome = [9.0, 8.0, 7.0, 6.0, 5.0]
-      individual.chromosome = new_chromosome
-      expect(individual.chromosome).to eq(new_chromosome)
-    end
-  end
-
-  describe "#initialize_chromosome" do
-    subject(:individual) do
-      described_class.new(
-        n_dim: n_dim,
-        upper_limit: upper_limit,
-        lower_limit: lower_limit,
-        chromosome: [1.0, 2.0, 3.0, 4.0, 5.0]
-      )
-    end
-
-    it "regenerates the chromosome within bounds" do
-      original_chromosome = individual.chromosome.dup
-      individual.initialize_chromosome(random: random)
-
-      expect(individual.chromosome).not_to eq(original_chromosome)
-      individual.chromosome.each do |gene|
-        expect(gene).to be_between(lower_limit, upper_limit)
-      end
-    end
-
-    it "maintains the correct chromosome size" do
-      individual.initialize_chromosome(random: random)
-      expect(individual.chromosome.size).to eq(n_dim)
-    end
-  end
-
-  describe "randomness and reproducibility" do
-    it "produces different chromosomes on different initializations" do
-      individual1 = described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-      individual2 = described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-
-      expect(individual1.chromosome).not_to eq(individual2.chromosome)
-    end
-
-    context "with seeded random" do
-      it "produces reproducible results with same seed" do
-        bounds = Genalgo::Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-        individual1 = described_class.new(bounds: bounds, random: Random.new(12_345))
-        individual2 = described_class.new(bounds: bounds, random: Random.new(12_345))
-
-        expect(individual1.chromosome).to eq(individual2.chromosome)
-      end
-    end
-  end
-
-  describe "#dup" do
-    it "copies chromosome and fitness without drawing from the random stream" do
-      bounds = Genalgo::Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-      individual = described_class.new(bounds: bounds, random: random)
-      individual.fitness = 42.0
-      expect(random).not_to receive(:rand)
-      expect(Random).not_to receive(:new)
-
-      copy = individual.dup
-
-      expect(copy.bounds).to be(bounds)
-      expect(copy.chromosome).to eq(individual.chromosome)
-      expect(copy.chromosome).not_to be(individual.chromosome)
-      expect(copy.fitness).to eq(42.0)
-      copy.chromosome[0] = 999.0
-      copy.fitness = -1.0
-      expect(individual.chromosome[0]).not_to eq(999.0)
-      expect(individual.fitness).to eq(42.0)
-    end
+    expect(copy.bounds).to be(bounds)
+    expect(copy.chromosome).to eq(original.chromosome)
+    expect(copy.chromosome).not_to be(original.chromosome)
+    expect(copy.fitness).to eq(42.0)
+    copy.chromosome[0] = 999.0
+    copy.fitness = -1.0
+    expect(original.chromosome[0]).to eq(0.0)
+    expect(original.fitness).to eq(42.0)
   end
 end

@@ -7,9 +7,9 @@ module Genalgo
   class Population
     include Enumerable
 
-    def initialize(n_pop:, bounds: nil, random: Random.new, **bound_params)
+    def initialize(n_pop:, bounds:, random: Random.new)
       @n_pop = n_pop
-      @bounds = bounds || Bounds.new(n_dim: nil, upper_limit: nil, lower_limit: nil, **bound_params)
+      @bounds = bounds
       validate_parameters!
       initialize_population(random: random)
     end
@@ -59,7 +59,9 @@ module Genalgo
     private
 
     def initialize_population(random:)
-      @population = Array.new(@n_pop) { Individual.new(bounds: @bounds, random: random) }
+      @population = Array.new(@n_pop) do
+        Individual.new(bounds: @bounds, chromosome: @bounds.random_chromosome(random: random))
+      end
     end
 
     def initialize_copy(other)

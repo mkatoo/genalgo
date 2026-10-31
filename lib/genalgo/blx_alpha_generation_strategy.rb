@@ -11,8 +11,8 @@ module Genalgo
 
       parent1, parent2 = population.pop(2, random: @random)
 
-      child1 = @crossover_strategy.crossover(parent1, parent2, @bounds)
-      child2 = @crossover_strategy.crossover(parent1, parent2, @bounds)
+      child1 = @crossover_strategy.crossover(parent1, parent2)
+      child2 = @crossover_strategy.crossover(parent1, parent2)
 
       evaluate_individuals([child1, child2])
       selected_individuals = @selection_strategy.select([parent1, parent2, child1, child2], 2)

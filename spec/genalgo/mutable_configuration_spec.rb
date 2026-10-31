@@ -1,68 +1,79 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::MutableConfiguration do
-  let(:params) do
-    {
-      n_pop: 4, n_dim: 2, n_eval: 8, lower_limit: -1.0, upper_limit: 1.0,
-      evaluation_function: lambda(&:sum), seed: 123
-    }
-  end
+  let(:bounds) { Genalgo::Bounds.new(lower: [-1.0, 10.0], upper: [1.0, 20.0]) }
+  let(:params) { { n_pop: 4, n_eval: 8, bounds: bounds, evaluation_function: lambda(&:sum), seed: 123 } }
 
-  it "accepts partial input and validates only when a snapshot is built" do
+  it "accepts partial input and validates when a snapshot is built" do
     input = described_class.new(n_pop: 4)
-    input.n_dim = 0
+    input.bounds = :invalid
 
     expect(input).not_to be_complete
     expect { input.build }.to raise_error(Genalgo::ConfigurationError)
-
     params.each { |key, value| input.public_send("#{key}=", value) }
 
     expect(input).to be_complete
     expect(input.build.to_h).to include(params)
   end
 
-  it "keeps the generated seed across edits and builds" do
+  it "keeps its generated seed across edits and builds" do
     input = described_class.new(params.except(:seed))
-    original_seed = input.seed
+    seed = input.seed
     input.n_eval = 10
-    input.upper_limit = 2.0
+    input.bounds = Genalgo::Bounds.new(lower: [0.0], upper: [1.0])
 
-    expect(input.seed).to eq(original_seed)
-    expect(input.build.seed).to eq(original_seed)
-    expect(input.build.seed).to eq(original_seed)
+    expect(input.build.seed).to eq(seed)
+    expect(input.build.seed).to eq(seed)
   end
 
-  it "builds independent snapshots while keeping the input editable" do
+  it "builds independent snapshots when the entire bounds object is replaced" do
     input = described_class.new(params)
     first = input.build
-    input.n_dim = 3
-    input.upper_limit = 10.0
+    input.bounds = Genalgo::Bounds.new(lower: [0.0, 10.0, 3.0], upper: [1.0, 20.0, 3.0])
     input.seed = 0
     second = input.build
 
-    expect(first.to_h).to include(n_dim: 2, upper_limit: 1.0, seed: 123)
-    expect(first.bounds_object.random_chromosome(random: Random.new(123)).size).to eq(2)
-    expect(second.to_h).to include(n_dim: 3, upper_limit: 10.0, seed: 0)
-    expect(second.bounds_object.random_chromosome(random: Random.new(123)).size).to eq(3)
+    expect(first.bounds).to be(bounds)
+    expect(first.n_dim).to eq(2)
+    expect(first.seed).to eq(123)
+    expect(second.bounds).to be(input.bounds)
+    expect(second.n_dim).to eq(3)
+    expect(second.seed).to eq(0)
     expect(first).to be_frozen
     expect(second).to be_frozen
     expect(input).not_to be_frozen
   end
 
-  it "does not share its input hash or exported hash with callers" do
+  it "copies input settings and exported hashes" do
     input = described_class.new(params)
     params[:n_pop] = 100
-    input.to_h[:n_eval] = 1
+    input.to_h[:bounds] = nil
 
-    expect(input.build.to_h).to include(n_pop: 4, n_eval: 8)
+    expect(input.build.n_pop).to eq(4)
+    expect(input.bounds).to be(bounds)
   end
 
-  it "allows invalid edits to be corrected after a failed build" do
+  it "allows invalid input to be corrected after a failed build" do
     input = described_class.new(params)
-    input.upper_limit = -2.0
+    input.bounds = :invalid
     expect { input.build }.to raise_error(Genalgo::ConfigurationError)
 
-    input.upper_limit = 2.0
-    expect(input.build.upper_limit).to eq(2.0)
+    input.bounds = bounds
+    expect(input.build.bounds).to be(bounds)
+  end
+
+  it "rejects unknown settings when built instead of silently discarding them" do
+    input = described_class.new(params.merge(typo: 123))
+
+    expect { input.build }.to raise_error(Genalgo::ConfigurationError, /Unknown parameters: typo/)
+  end
+
+  it "generates a new seed when explicitly reset" do
+    input = described_class.new(params)
+    input.seed = nil
+
+    expect(input.seed).to be_a(Integer)
+    expect(input.seed).not_to eq(123)
+    expect(input.build.seed).to eq(input.seed)
   end
 end

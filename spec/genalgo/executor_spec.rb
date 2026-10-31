@@ -4,103 +4,28 @@ RSpec.describe Genalgo::Executor do
   let(:default_params) do
     {
       n_pop: 10,
-      n_dim: 3,
       n_eval: 50,
       evaluation_function: ->(chromosome) { chromosome.sum.abs },
-      upper_limit: 5.0,
-      lower_limit: -5.0,
+      bounds: Genalgo::Bounds.new(lower: Array.new(3, -5.0), upper: Array.new(3, 5.0)),
       crossover: :blx_alpha,
       seed: 12_345
     }
   end
 
   describe "#initialize" do
-    context "with all parameters" do
-      subject(:executor) { described_class.new(default_params) }
+    it "exposes editable settings through configuration" do
+      executor = described_class.new(default_params)
 
-      it "sets all provided parameters" do
-        expect(executor.n_pop).to eq(10)
-        expect(executor.n_dim).to eq(3)
-        expect(executor.n_eval).to eq(50)
-        expect(executor.upper_limit).to eq(5.0)
-        expect(executor.lower_limit).to eq(-5.0)
-        expect(executor.crossover).to eq(:blx_alpha)
-        expect(executor.seed).to eq(12_345)
-        expect(executor.evaluation_function).to be_a(Proc)
-      end
+      expect(executor.configuration).to be_a(Genalgo::MutableConfiguration)
+      expect(executor.configuration.to_h).to include(default_params)
     end
 
-    context "with minimal parameters" do
-      subject(:executor) { described_class.new }
+    it "allows settings to be prepared incrementally" do
+      executor = described_class.new
 
-      it "creates executor with nil values" do
-        expect(executor.n_pop).to be_nil
-        expect(executor.n_dim).to be_nil
-        expect(executor.n_eval).to be_nil
-        expect(executor.evaluation_function).to be_nil
-      end
-
-      it "sets default crossover to :blx_alpha" do
-        expect(executor.crossover).to eq(:blx_alpha)
-      end
-
-      it "generates a random seed" do
-        expect(executor.seed).to be_a(Integer)
-        expect(executor.seed).to be_positive
-      end
-    end
-
-    context "with partial parameters" do
-      let(:partial_params) { { n_pop: 20, crossover: :simplex } }
-      subject(:executor) { described_class.new(partial_params) }
-
-      it "sets provided parameters and leaves others nil" do
-        expect(executor.n_pop).to eq(20)
-        expect(executor.crossover).to eq(:simplex)
-        expect(executor.n_dim).to be_nil
-      end
-    end
-  end
-
-  describe "attribute accessors" do
-    subject(:executor) { described_class.new }
-
-    it "allows setting and getting n_pop" do
-      executor.n_pop = 50
-      expect(executor.n_pop).to eq(50)
-    end
-
-    it "allows setting and getting n_dim" do
-      executor.n_dim = 5
-      expect(executor.n_dim).to eq(5)
-    end
-
-    it "allows setting and getting n_eval" do
-      executor.n_eval = 1000
-      expect(executor.n_eval).to eq(1000)
-    end
-
-    it "allows setting and getting evaluation_function" do
-      func = ->(x) { x.map(&:abs).sum }
-      executor.evaluation_function = func
-      expect(executor.evaluation_function).to eq(func)
-    end
-
-    it "allows setting and getting bounds" do
-      executor.upper_limit = 10.0
-      executor.lower_limit = -10.0
-      expect(executor.upper_limit).to eq(10.0)
-      expect(executor.lower_limit).to eq(-10.0)
-    end
-
-    it "allows setting and getting crossover type" do
-      executor.crossover = :simplex
-      expect(executor.crossover).to eq(:simplex)
-    end
-
-    it "allows setting and getting seed" do
-      executor.seed = 54_321
-      expect(executor.seed).to eq(54_321)
+      expect(executor.configuration).not_to be_complete
+      expect(executor.configuration.seed).to be_a(Integer)
+      expect(executor.configuration.crossover).to eq(:blx_alpha)
     end
   end
 
@@ -222,7 +147,7 @@ RSpec.describe Genalgo::Executor do
         expect(executor.execution_configuration.to_h).to eq(configuration.to_h)
         expect(executor.population.size).to eq(10)
         expect(executor.history.last.evaluations).to eq(50)
-        expect(executor.population.map(&:bounds)).to all(be(executor.execution_configuration.bounds_object))
+        expect(executor.population.map(&:bounds)).to all(be(executor.execution_configuration.bounds))
       end
 
       %i[initialization evolution].each do |phase|
@@ -233,17 +158,15 @@ RSpec.describe Genalgo::Executor do
           baseline.execute
           calls = 0
           executor = described_class.new(params)
-          executor.evaluation_function = lambda do |chromosome|
+          executor.configuration.evaluation_function = lambda do |chromosome|
             calls += 1
             if calls == change_at
-              executor.n_pop = 4
-              executor.n_dim = 1
-              executor.n_eval = 10
-              executor.lower_limit = 99.0
-              executor.upper_limit = 100.0
-              executor.seed = 999
-              executor.crossover = crossover == :simplex ? :blx_alpha : :simplex
-              executor.evaluation_function = ->(_x) { raise "Used pending evaluation function" }
+              executor.configuration.n_pop = 4
+              executor.configuration.n_eval = 10
+              executor.configuration.bounds = Genalgo::Bounds.new(lower: [99.0], upper: [100.0])
+              executor.configuration.seed = 999
+              executor.configuration.crossover = crossover == :simplex ? :blx_alpha : :simplex
+              executor.configuration.evaluation_function = ->(_x) { raise "Used pending evaluation function" }
             end
             params[:evaluation_function].call(chromosome)
           end
@@ -269,14 +192,12 @@ RSpec.describe Genalgo::Executor do
       executor.execute
       previous = executor.execution_configuration
       previous_population = executor.population
-      executor.configuration.n_dim = 1
-      executor.n_pop = 4
-      executor.n_eval = 10
-      executor.lower_limit = 99.0
-      executor.upper_limit = 100.0
-      executor.crossover = :simplex
+      executor.configuration.n_pop = 4
+      executor.configuration.n_eval = 10
+      executor.configuration.bounds = Genalgo::Bounds.new(lower: [99.0], upper: [100.0])
+      executor.configuration.crossover = :simplex
       calls = 0
-      executor.evaluation_function = lambda do |chromosome|
+      executor.configuration.evaluation_function = lambda do |chromosome|
         calls += 1
         chromosome.sum
       end
@@ -284,12 +205,13 @@ RSpec.describe Genalgo::Executor do
       executor.execute
 
       expect(calls).to eq(10)
-      expect(executor.execution_configuration.to_h).to include(n_dim: 1, n_pop: 4, n_eval: 10, crossover: :simplex)
+      expect(executor.execution_configuration.to_h).to include(n_pop: 4, n_eval: 10, crossover: :simplex)
       expect(executor.history.first.evaluations).to eq(4)
       expect(executor.history.last.evaluations).to eq(10)
       expect(executor.population.map(&:chromosome).flatten).to all(be_between(99.0, 100.0))
-      expect(previous.to_h).to include(n_dim: 3, n_pop: 10, n_eval: 50, crossover: :blx_alpha)
+      expect(previous.to_h).to include(n_pop: 10, n_eval: 50, crossover: :blx_alpha)
       expect(previous_population.map(&:n_dim)).to all(eq(3))
+      expect(executor.execution_configuration.n_dim).to eq(1)
     end
 
     it "rejects an insufficient budget before evaluating or creating run state" do
@@ -309,7 +231,7 @@ RSpec.describe Genalgo::Executor do
       executor.execute
       previous = executor.execution_configuration
       previous_history = executor.history
-      executor.n_eval = 1
+      executor.configuration.n_eval = 1
 
       expect { executor.execute }.to raise_error(Genalgo::ConfigurationError)
       expect(executor.execution_configuration).to be(previous)
@@ -318,8 +240,8 @@ RSpec.describe Genalgo::Executor do
 
     it "keeps a generated seed stable across repeated executions" do
       executor = described_class.new(default_params.except(:seed))
-      seed = executor.seed
-      executor.n_eval = 20
+      seed = executor.configuration.seed
+      executor.configuration.n_eval = 20
       executor.execute
       first = executor.history.map { |entry| entry.best_individual.chromosome }
       executor.execute
@@ -332,7 +254,7 @@ RSpec.describe Genalgo::Executor do
       configuration = Genalgo::Configuration.new(default_params)
       first = described_class.new(configuration)
       second = described_class.new(configuration)
-      first.n_eval = 10
+      first.configuration.n_eval = 10
 
       first.execute
       second.execute
@@ -432,7 +354,7 @@ RSpec.describe Genalgo::Executor do
 
   describe "population bounds enforcement" do
     let(:tight_bounds_params) do
-      default_params.merge(upper_limit: 1.0, lower_limit: -1.0)
+      default_params.merge(bounds: Genalgo::Bounds.new(lower: Array.new(3, -1.0), upper: Array.new(3, 1.0)))
     end
     subject(:executor) { described_class.new(tight_bounds_params) }
 
@@ -487,7 +409,10 @@ RSpec.describe Genalgo::Executor do
   describe "different problem dimensions" do
     [1, 2, 5, 10].each do |dim|
       context "with #{dim} dimensions" do
-        let(:dim_params) { default_params.merge(n_dim: dim) }
+        let(:dim_params) do
+          bounds = Genalgo::Bounds.new(lower: Array.new(dim, -5.0), upper: Array.new(dim, 5.0))
+          default_params.merge(bounds: bounds)
+        end
         subject(:executor) { described_class.new(dim_params) }
 
         it "handles #{dim}D problems correctly" do

@@ -1,44 +1,65 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::Bounds do
-  let(:params) { { n_dim: 2, lower_limit: -1.0, upper_limit: 1.0 } }
+  let(:params) { { lower: [-1.0, 10.0, 3.0], upper: [1.0, 20.0, 3.0] } }
+  subject(:bounds) { described_class.new(**params) }
 
-  it "is immutable and still supports sampling and clamping" do
-    bounds = described_class.new(**params)
+  it "derives its dimension from independent coordinate intervals" do
+    expect(bounds.n_dim).to eq(3)
+    expect(bounds.within_bounds?([0.0, 15.0, 3.0])).to be(true)
+    expect(bounds.within_bounds?([0.0, 5.0, 3.0])).to be(false)
+  end
 
-    expect(bounds).to be_frozen
-    expect(bounds.within_bounds?(bounds.random_chromosome(random: Random.new(123)))).to be(true)
-    expect(bounds.clamp_chromosome([-2.0, 2.0])).to eq([-1.0, 1.0])
+  it "copies and freezes the input arrays" do
+    original = bounds
+    params[:lower][0] = -100.0
+    params[:upper] << 100.0
+
+    expect(original).to be_frozen
+    expect(original.lower).to eq([-1.0, 10.0, 3.0])
+    expect(original.upper).to eq([1.0, 20.0, 3.0])
+    expect { original.lower[0] = 0.0 }.to raise_error(FrozenError)
+    expect { original.upper << 1.0 }.to raise_error(FrozenError)
+  end
+
+  it "samples each coordinate from its interval, including fixed coordinates" do
+    random = Random.new(123)
+    20.times do
+      chromosome = bounds.random_chromosome(random: random)
+      expect(chromosome[0]).to be_between(-1.0, 1.0)
+      expect(chromosome[1]).to be_between(10.0, 20.0)
+      expect(chromosome[2]).to eq(3.0)
+    end
+  end
+
+  it "clamps each coordinate without modifying the input" do
+    chromosome = [-2.0, 30.0, 99.0]
+
+    expect(bounds.clamp_chromosome(chromosome)).to eq([-1.0, 20.0, 3.0])
+    expect(chromosome).to eq([-2.0, 30.0, 99.0])
   end
 
   {
-    "missing dimension" => { n_dim: nil },
-    "non-integer dimension" => { n_dim: 2.5 },
-    "zero dimension" => { n_dim: 0 },
-    "negative dimension" => { n_dim: -1 },
-    "missing lower limit" => { lower_limit: nil },
-    "missing upper limit" => { upper_limit: nil },
-    "non-numeric lower limit" => { lower_limit: "-1" },
-    "non-numeric upper limit" => { upper_limit: "1" },
-    "reversed limits" => { lower_limit: 2.0 },
-    "NaN lower limit" => { lower_limit: Float::NAN },
-    "NaN upper limit" => { upper_limit: Float::NAN },
-    "infinite lower limit" => { lower_limit: -Float::INFINITY },
-    "infinite upper limit" => { upper_limit: Float::INFINITY },
-    "complex limit" => { upper_limit: Complex(1, 1) }
+    "missing lower array" => { lower: nil },
+    "scalar lower bound" => { lower: -1.0 },
+    "scalar upper bound" => { upper: 1.0 },
+    "empty arrays" => { lower: [], upper: [] },
+    "different array lengths" => { upper: [1.0] },
+    "non-numeric coordinate" => { lower: [-1.0, "10", 3.0] },
+    "NaN coordinate" => { upper: [1.0, Float::NAN, 3.0] },
+    "infinite coordinate" => { lower: [-Float::INFINITY, 10.0, 3.0] },
+    "complex coordinate" => { upper: [1.0, Complex(20, 1), 3.0] },
+    "reversed interval" => { lower: [-1.0, 21.0, 3.0] }
   }.each do |description, invalid_params|
-    it "rejects #{description} through every initialization path" do
-      values = params.merge(invalid_params)
-      constructors = [
-        -> { described_class.new(**values) },
-        -> { Genalgo::Individual.new(**values) },
-        -> { Genalgo::Population.new(n_pop: 4, **values) },
-        -> { Genalgo::Configuration.new(values.merge(n_pop: 4, n_eval: 8, evaluation_function: lambda(&:sum))) }
-      ]
+    it "rejects #{description}" do
+      expect { described_class.new(**params, **invalid_params) }.to raise_error(Genalgo::ConfigurationError)
+    end
+  end
 
-      constructors.each do |construct|
-        expect(&construct).to raise_error(Genalgo::ConfigurationError)
-      end
+  [nil, "abc", [0.0], [0.0, 15.0, 3.0, 4.0], [0.0, nil, 3.0], [0.0, Float::NAN, 3.0]].each do |chromosome|
+    it "rejects a malformed chromosome #{chromosome.inspect}" do
+      expect(bounds.within_bounds?(chromosome)).to be(false)
+      expect { bounds.clamp_chromosome(chromosome) }.to raise_error(ArgumentError)
     end
   end
 end

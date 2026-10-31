@@ -1,20 +1,21 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::History do
+  let(:bounds) { Genalgo::Bounds.new(lower: Array.new(3, -10.0), upper: Array.new(3, 10.0)) }
   let(:individual1) do
-    individual = Genalgo::Individual.new(n_dim: 3, upper_limit: 10.0, lower_limit: -10.0)
+    individual = Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0])
     individual.fitness = 5.0
     individual
   end
 
   let(:individual2) do
-    individual = Genalgo::Individual.new(n_dim: 3, upper_limit: 10.0, lower_limit: -10.0)
+    individual = Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0])
     individual.fitness = 3.0
     individual
   end
 
   let(:individual3) do
-    individual = Genalgo::Individual.new(n_dim: 3, upper_limit: 10.0, lower_limit: -10.0)
+    individual = Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0])
     individual.fitness = 1.0
     individual
   end

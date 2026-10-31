@@ -5,7 +5,7 @@ RSpec.describe Genalgo::MGG do
   let(:random) { Random.new(params[:seed]) }
   let(:params) do
     {
-      n_pop: 6, n_dim: 3, n_eval: 20, lower_limit: -1.0, upper_limit: 1.0,
+      n_pop: 6, n_eval: 20, bounds: Genalgo::Bounds.new(lower: Array.new(3, -1.0), upper: Array.new(3, 1.0)),
       evaluation_function: evaluation_function, seed: 123
     }
   end
@@ -17,7 +17,7 @@ RSpec.describe Genalgo::MGG do
       let(:configuration) { Genalgo::Configuration.new(params.merge(crossover: crossover)) }
       let(:population) do
         population = Genalgo::Population.new(
-          n_pop: configuration.n_pop, bounds: configuration.bounds_object, random: random
+          n_pop: configuration.n_pop, bounds: configuration.bounds, random: random
         )
         population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
         population
@@ -63,7 +63,7 @@ RSpec.describe Genalgo::MGG do
         expect(population.map { |individual| [individual.chromosome, individual.fitness] }).to eq(original_values)
 
         result.each do |individual|
-          individual.chromosome.fill(configuration.lower_limit)
+          individual.chromosome.replace(configuration.bounds.lower)
           individual.fitness = -100.0
         end
 
@@ -75,7 +75,7 @@ RSpec.describe Genalgo::MGG do
         minimum_configuration = Genalgo::Configuration.new(configuration.to_h.merge(n_pop: minimum))
         generation = described_class.new(minimum_configuration, random: random)
         population = Genalgo::Population.new(
-          n_pop: minimum, bounds: minimum_configuration.bounds_object, random: random
+          n_pop: minimum, bounds: minimum_configuration.bounds, random: random
         )
         population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
 
@@ -90,14 +90,14 @@ RSpec.describe Genalgo::MGG do
         first_population = population
         other_evaluation = ->(_chromosome) { -100.0 }
         other_params = params.merge(
-          n_pop: 2, n_dim: 1, lower_limit: 10.0, upper_limit: 11.0,
+          n_pop: 2, bounds: Genalgo::Bounds.new(lower: [10.0], upper: [11.0]),
           crossover: crossover == :simplex ? :blx_alpha : :simplex, evaluation_function: other_evaluation
         )
         other_configuration = Genalgo::Configuration.new(other_params)
         other_random = Random.new(other_configuration.seed)
         other_generation = described_class.new(other_configuration, random: other_random)
         other_population = Genalgo::Population.new(
-          n_pop: 2, bounds: other_configuration.bounds_object, random: other_random
+          n_pop: 2, bounds: other_configuration.bounds, random: other_random
         )
         other_population.each { |individual| individual.fitness = 0.0 }
         expect(evaluation_function).to receive(:call).twice.and_call_original
@@ -108,7 +108,7 @@ RSpec.describe Genalgo::MGG do
 
         expect(first_result.size).to eq(configuration.n_pop)
         first_result.each do |individual|
-          expect(individual.bounds).to be(configuration.bounds_object)
+          expect(individual.bounds).to be(configuration.bounds)
           expect(individual.fitness).to eq(individual.chromosome.sum { |gene| gene * gene })
         end
         expect(other_result.size).to eq(2)

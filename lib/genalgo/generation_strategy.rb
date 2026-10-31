@@ -12,7 +12,6 @@ module Genalgo
       @selection_strategy = EliteRouletteSelection.new(random: random)
       @evaluation_function = configuration.evaluation_function
       @n_dim = configuration.n_dim
-      @bounds = configuration.bounds
     end
 
     # Abstract method to be implemented by subclasses
