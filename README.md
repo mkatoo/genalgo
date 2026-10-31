@@ -1,7 +1,7 @@
 # Genalgo
 
-Real-coded genetic algorithms with the Minimal Generation Gap (MGG) model.
-Supports BLX-alpha and Simplex crossover.
+Genalgo implements real-coded genetic algorithms using the Minimal Generation
+Gap (MGG) model. It supports BLX-alpha and Simplex crossover.
 
 ## Installation
 
@@ -36,8 +36,9 @@ executor.best_individual
 executor.history.last.evaluations
 ```
 
-Fitness is minimized. History records an independent copy of the best individual
-and the cumulative evaluation count after initialization and each generation.
+Genalgo minimizes fitness. History records an independent copy of the best
+individual and the cumulative evaluation count after population initialization
+and each generation.
 
 ## Coordinate bounds
 
@@ -54,12 +55,13 @@ bounds.n_dim # => 3
 Here the first coordinate ranges from -5 to 5, the second from 10 to 20, and the
 third is fixed at 3. The dimension comes from the array length; it is never set
 separately. Both arrays must be non-empty, have equal lengths, and contain finite
-real numbers. Each lower bound must be less than or equal to its upper bound.
+real numbers. Each lower bound must be less than or equal to its corresponding
+upper bound.
 
 Bounds copies and freezes its input arrays. Initialization and crossover respect
-each coordinate's interval. Individuals receive a `Bounds` object and a chromosome;
-they copy and clamp the chromosome, rejecting incorrect lengths or non-finite
-coordinates.
+each coordinate's interval. Each individual receives a `Bounds` object and a
+chromosome. It copies and clamps the chromosome, rejecting incorrect lengths or
+non-finite coordinates.
 
 ## Configuration
 
@@ -82,10 +84,12 @@ executor.execution_configuration.n_dim # => 3
 `Configuration.new(params)` validates immediately and freezes the settings.
 `MutableConfiguration#build` validates editable input and creates that immutable
 snapshot. Unknown settings are rejected. Assign a new `Bounds` object to
-`executor.configuration.bounds` to change intervals or the dimension together.
+`executor.configuration.bounds` to change the intervals or the dimension in one
+operation.
 
-Each `execute` validates pending settings before replacing previous results. The
-snapshot used by the run is available as `executor.execution_configuration`.
+Each call to `execute` validates pending settings before replacing previous
+results. The snapshot used by the run is available as
+`executor.execution_configuration`.
 Changes to pending settings during evaluation take effect on the next execution.
 Input settings are copied; immutable bounds can be shared safely. The evaluation
 callable is retained by reference.
@@ -96,12 +100,14 @@ Each generation evaluates two children. A remaining budget of one evaluation is
 left unused. Invalid settings raise `Genalgo::ConfigurationError` before evaluation.
 
 An omitted seed is generated once and retained across unrelated edits and repeated
-executions. Assign a new seed, or assign `nil` to generate one, to change subsequent
-runs. Each execution uses its own random stream for initialization, parent
+executions. To change the seed for subsequent runs, assign a new value or set it
+to `nil` to generate one.
+
+Each execution uses its own random stream for initialization, parent
 sampling, crossover, and selection. Global `rand`/`srand` calls and other executors
 do not affect that stream. Genalgo does not advance or reseed the global stream.
-Reproducibility assumes a deterministic evaluation function; a stochastic
-function controls its own randomness.
+Reproducibility assumes a deterministic evaluation function. A stochastic
+evaluation function controls its own randomness.
 
 ## Direct generation control
 
