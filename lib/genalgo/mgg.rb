@@ -24,16 +24,12 @@ module Genalgo
 
       private
 
-      def generation_manager
-        @generation_manager ||= create_generation_manager
-      end
-
       def generation_manager_for_configuration(configuration)
         # Don't cache configuration-based managers to allow for different configurations
         create_generation_manager_for_configuration(configuration)
       end
 
-      def create_generation_manager
+      def generation_manager
         crossover_strategy = create_crossover_strategy
         selection_strategy = EliteRouletteSelection.new
         bounds = { upper: @upper_limit, lower: @lower_limit }

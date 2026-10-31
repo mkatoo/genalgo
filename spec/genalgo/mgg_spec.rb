@@ -20,7 +20,6 @@ RSpec.describe Genalgo::MGG do
     described_class.upper_limit = nil
     described_class.evaluation_function = nil
     described_class.crossover = nil
-    described_class.instance_variable_set(:@generation_manager, nil)
   end
 
   describe "class attributes" do
@@ -149,7 +148,7 @@ RSpec.describe Genalgo::MGG do
     end
   end
 
-  describe "generation manager creation and caching" do
+  describe "successive generations" do
     before do
       described_class.n_dim = n_dim
       described_class.lower_limit = lower_limit
@@ -158,16 +157,13 @@ RSpec.describe Genalgo::MGG do
       described_class.crossover = :blx_alpha
     end
 
-    it "creates generation manager on first access" do
-      # First call should create the manager
+    it "evolves populations on successive calls" do
       result1 = described_class.next_generation(population)
-
-      # Manager should be cached and reused
-      pop_copy = population.dup
-      result2 = described_class.next_generation(pop_copy)
+      result2 = described_class.next_generation(result1)
 
       expect(result1).to be_a(Genalgo::Population)
       expect(result2).to be_a(Genalgo::Population)
+      expect(result2.size).to eq(population.size)
     end
 
     it "uses the configured bounds" do
@@ -235,6 +231,40 @@ RSpec.describe Genalgo::MGG do
   end
 
   describe "state management" do
+    %i[blx_alpha simplex].each do |crossover|
+      context "after using #{crossover} crossover" do
+        before do
+          described_class.n_dim = n_dim
+          described_class.lower_limit = lower_limit
+          described_class.upper_limit = upper_limit
+          described_class.evaluation_function = evaluation_function
+          described_class.crossover = crossover
+          described_class.next_generation(population)
+        end
+
+        it "uses the updated evaluation function for the next generation" do
+          evaluated_chromosomes = []
+          described_class.evaluation_function = lambda do |chromosome|
+            evaluated_chromosomes << chromosome.dup
+            -100.0
+          end
+
+          result = described_class.next_generation(population)
+
+          expect(evaluated_chromosomes.size).to eq(2)
+          expect(result.map(&:fitness)).to include(-100.0)
+        end
+
+        it "validates an updated crossover instead of using the previous strategy" do
+          described_class.crossover = :unknown_type
+
+          expect { described_class.next_generation(population) }.to raise_error(
+            Genalgo::StrategyError, /Unknown crossover type: unknown_type/
+          )
+        end
+      end
+    end
+
     it "maintains configuration across calls" do
       described_class.n_dim = 4
       described_class.lower_limit = -2.0

@@ -233,16 +233,40 @@ RSpec.describe Genalgo::GenerationManager do
   end
 
   describe "population duplication behavior" do
-    subject(:manager) do
-      described_class.new(blx_alpha_crossover, selection_strategy, evaluation_function, n_dim, bounds)
-    end
+    %i[blx_alpha_crossover simplex_crossover].each do |crossover|
+      context "with #{crossover}" do
+        subject(:manager) do
+          described_class.new(public_send(crossover), selection_strategy, evaluation_function, n_dim, bounds)
+        end
 
-    it "does not modify the input population" do
-      original_individuals = population.to_a.dup
-      manager.next_generation(population)
+        it "preserves the input individuals, chromosomes, and fitness values" do
+          original_individuals = population.to_a
+          original_values = population.map { |individual| [individual.chromosome.dup, individual.fitness] }
 
-      # Original population should be unchanged
-      expect(population.to_a).to eq(original_individuals)
+          result = manager.next_generation(population)
+
+          expect(population.to_a).to eq(original_individuals)
+          expect(population.map { |individual| [individual.chromosome, individual.fitness] }).to eq(original_values)
+
+          result.each do |individual|
+            individual.chromosome.fill(bounds[:lower])
+            individual.fitness = -100.0
+          end
+
+          expect(population.map { |individual| [individual.chromosome, individual.fitness] }).to eq(original_values)
+        end
+
+        it "evaluates exactly two children and preserves the best fitness" do
+          best_fitness = population.best_individual.fitness
+          expect(evaluation_function).to receive(:call).twice.and_call_original
+
+          result = manager.next_generation(population)
+
+          expect(result.size).to eq(population.size)
+          expect(result).to all(be_within_bounds)
+          expect(result.best_individual.fitness).to be <= best_fitness
+        end
+      end
     end
   end
 end

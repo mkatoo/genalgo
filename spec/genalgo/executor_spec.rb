@@ -225,37 +225,41 @@ RSpec.describe Genalgo::Executor do
         expect(executor.population.map(&:bounds)).to all(be(executor.execution_configuration.bounds_object))
       end
 
-      it "keeps the #{crossover} run stable when setters are called during evaluation" do
-        params = default_params.merge(crossover: crossover)
-        baseline = described_class.new(params)
-        baseline.execute
-        calls = 0
-        executor = described_class.new(params)
-        executor.evaluation_function = lambda do |chromosome|
-          calls += 1
-          if calls == 1
-            executor.n_pop = 4
-            executor.n_dim = 1
-            executor.n_eval = 10
-            executor.lower_limit = 99.0
-            executor.upper_limit = 100.0
-            executor.seed = 999
-            executor.crossover = crossover == :simplex ? :blx_alpha : :simplex
-            executor.evaluation_function = ->(_x) { raise "Used pending evaluation function" }
+      %i[initialization evolution].each do |phase|
+        it "keeps the #{crossover} run stable when setters are called during #{phase}" do
+          params = default_params.merge(crossover: crossover)
+          change_at = phase == :initialization ? 1 : params[:n_pop] + 1
+          baseline = described_class.new(params)
+          baseline.execute
+          calls = 0
+          executor = described_class.new(params)
+          executor.evaluation_function = lambda do |chromosome|
+            calls += 1
+            if calls == change_at
+              executor.n_pop = 4
+              executor.n_dim = 1
+              executor.n_eval = 10
+              executor.lower_limit = 99.0
+              executor.upper_limit = 100.0
+              executor.seed = 999
+              executor.crossover = crossover == :simplex ? :blx_alpha : :simplex
+              executor.evaluation_function = ->(_x) { raise "Used pending evaluation function" }
+            end
+            params[:evaluation_function].call(chromosome)
           end
-          params[:evaluation_function].call(chromosome)
+
+          executor.execute
+
+          expect(calls).to eq(50)
+          expect(executor.execution_configuration.to_h).to include(params.except(:evaluation_function))
+          expect(executor.history.map(&:evaluations)).to eq(baseline.history.map(&:evaluations))
+          expect(executor.history.map { |entry| entry.best_individual.chromosome }).to eq(
+            baseline.history.map { |entry| entry.best_individual.chromosome }
+          )
+          expect(executor.history.map { |entry| entry.best_individual.fitness }).to eq(
+            baseline.history.map { |entry| entry.best_individual.fitness }
+          )
         end
-
-        executor.execute
-
-        expect(calls).to eq(50)
-        expect(executor.execution_configuration.to_h).to include(params.except(:evaluation_function))
-        expect(executor.history.map { |entry| entry.best_individual.chromosome }).to eq(
-          baseline.history.map { |entry| entry.best_individual.chromosome }
-        )
-        expect(executor.history.map { |entry| entry.best_individual.fitness }).to eq(
-          baseline.history.map { |entry| entry.best_individual.fitness }
-        )
       end
     end
 
