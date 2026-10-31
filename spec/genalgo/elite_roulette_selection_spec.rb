@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::EliteRouletteSelection do
+  let(:random) { Random.new(123) }
   let(:individuals) do
     [
       create_individual(fitness: 10.0),  # worst
@@ -19,7 +20,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
 
   describe "#initialize" do
     context "with default parameters" do
-      subject(:selector) { described_class.new }
+      subject(:selector) { described_class.new(random: random) }
 
       it "creates a selector instance" do
         expect(selector).to be_a(described_class)
@@ -27,7 +28,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
     end
 
     context "with custom scaling factor" do
-      subject(:selector) { described_class.new(scaling_factor: 0.8) }
+      subject(:selector) { described_class.new(random: random, scaling_factor: 0.8) }
 
       it "accepts custom scaling factor" do
         expect(selector).to be_a(described_class)
@@ -36,7 +37,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "#select" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     context "selecting single individual" do
       let(:selected) { selector.select(individuals, 1) }
@@ -116,7 +117,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "elite selection behavior" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     it "always includes the best individual when size > 1" do
       100.times do
@@ -134,7 +135,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "roulette selection behavior" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     context "with diverse fitness values" do
       let(:diverse_individuals) do
@@ -162,8 +163,8 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "scaling factor effects" do
-    let(:low_scaling_selector) { described_class.new(scaling_factor: 0.1) }
-    let(:high_scaling_selector) { described_class.new(scaling_factor: 2.0) }
+    let(:low_scaling_selector) { described_class.new(random: Random.new(123), scaling_factor: 0.1) }
+    let(:high_scaling_selector) { described_class.new(random: Random.new(123), scaling_factor: 2.0) }
 
     it "produces different selection patterns with different scaling factors" do
       low_scaling_selections = Array.new(50) { low_scaling_selector.select(individuals, 3) }
@@ -178,15 +179,14 @@ RSpec.describe Genalgo::EliteRouletteSelection do
         expect(selection.map(&:fitness)).to include(2.0)
       end
 
-      # Statistical test - different scaling should produce different patterns
-      # This is probabilistic, so we'll just verify both work without error
-      expect(low_scaling_selections.size).to eq(50)
-      expect(high_scaling_selections.size).to eq(50)
+      expect(low_scaling_selections.map { |selection| selection.map(&:fitness) }).not_to eq(
+        high_scaling_selections.map { |selection| selection.map(&:fitness) }
+      )
     end
   end
 
   describe "private method behaviors through public interface" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     context "scaled fitness calculation effects" do
       let(:linear_individuals) do
@@ -201,25 +201,20 @@ RSpec.describe Genalgo::EliteRouletteSelection do
     end
 
     context "probability calculation" do
-      it "maintains selection consistency" do
-        # Multiple selections with same seed should show similar patterns
-        results = []
-        5.times do |i|
-          srand(i)
-          selected = selector.select(individuals, 4)
-          results << selected.map(&:fitness).sort
-        end
+      it "reproduces selections with independent random generators using the same seed" do
+        first_selector = described_class.new(random: Random.new(123))
+        second_selector = described_class.new(random: Random.new(123))
 
-        # All should include the elite
-        results.each do |result|
-          expect(result).to include(2.0)
-        end
+        first = Array.new(5) { first_selector.select(individuals, 4) }
+        second = Array.new(5) { second_selector.select(individuals, 4) }
+
+        expect(first).to eq(second)
       end
     end
   end
 
   describe "edge cases" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     context "with single individual" do
       let(:single_individual) { [create_individual(fitness: 5.0)] }
@@ -255,7 +250,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "randomness and reproducibility" do
-    subject(:selector) { described_class.new }
+    subject(:selector) { described_class.new(random: random) }
 
     context "randomness verification" do
       it "produces different selections on multiple calls" do

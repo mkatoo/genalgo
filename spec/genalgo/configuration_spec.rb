@@ -63,7 +63,7 @@ RSpec.describe Genalgo::Configuration do
   it "allows equal bounds consistently with individual initialization" do
     configuration = described_class.new(params.merge(lower_limit: 1.0, upper_limit: 1.0))
 
-    expect(configuration.bounds_object.random_chromosome).to eq([1.0, 1.0])
+    expect(configuration.bounds_object.random_chromosome(random: Random.new(123))).to eq([1.0, 1.0])
   end
 
   it "accepts the minimum number of Simplex parents" do

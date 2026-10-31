@@ -82,9 +82,10 @@ module Genalgo
 
     def execute
       configuration = @configuration.build
-      generation = MGG.new(configuration)
+      random = Random.new(configuration.seed)
+      generation = MGG.new(configuration, random: random)
       setup(configuration)
-      initialize_population(configuration)
+      initialize_population(configuration, random: random)
       add_history
 
       evolve(generation, configuration.n_eval)
@@ -99,7 +100,6 @@ module Genalgo
     private
 
     def setup(configuration)
-      Random.srand(configuration.seed)
       @execution_configuration = configuration
       @history = History.new
     end
@@ -113,8 +113,8 @@ module Genalgo
       end
     end
 
-    def initialize_population(configuration)
-      @population = Population.new(n_pop: configuration.n_pop, bounds: configuration.bounds_object)
+    def initialize_population(configuration, random:)
+      @population = Population.new(n_pop: configuration.n_pop, bounds: configuration.bounds_object, random: random)
       evaluate_population(configuration.evaluation_function)
       @evals = configuration.n_pop
     end

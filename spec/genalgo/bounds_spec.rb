@@ -7,7 +7,7 @@ RSpec.describe Genalgo::Bounds do
     bounds = described_class.new(**params)
 
     expect(bounds).to be_frozen
-    expect(bounds.within_bounds?(bounds.random_chromosome)).to be(true)
+    expect(bounds.within_bounds?(bounds.random_chromosome(random: Random.new(123)))).to be(true)
     expect(bounds.clamp_chromosome([-2.0, 2.0])).to eq([-1.0, 1.0])
   end
 

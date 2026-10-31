@@ -6,7 +6,8 @@ module Genalgo
   class EliteRouletteSelection
     DEFAULT_SCALING_FACTOR = 0.5
 
-    def initialize(scaling_factor: DEFAULT_SCALING_FACTOR)
+    def initialize(random:, scaling_factor: DEFAULT_SCALING_FACTOR)
+      @random = random
       @scaling_factor = scaling_factor
     end
 
@@ -51,7 +52,7 @@ module Genalgo
       cumulative_probs = probs.inject([0.0]) { |acc, p| acc << (acc.last + p) }
 
       size.times.map do
-        r = Random.rand
+        r = @random.rand
         cumulative_probs.index { |cp| r <= cp } - 1
       end
     end

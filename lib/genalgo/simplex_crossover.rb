@@ -4,8 +4,9 @@ module Genalgo
   # Implements Simplex crossover for real-coded genetic algorithms.
   # Uses n_dim+1 parents to create offspring via simplex transformation.
   class SimplexCrossover
-    def initialize(n_dim)
+    def initialize(n_dim, random:)
       @n_dim = n_dim
+      @random = random
     end
 
     def crossover(parents)
@@ -47,7 +48,7 @@ module Genalgo
     end
 
     def calculate_coefficient_for_dimension(xs_values, cs_values, index)
-      random_factor = Random.rand**(1.0 / index)
+      random_factor = @random.rand**(1.0 / index)
 
       xs_values[index - 1].zip(xs_values[index], cs_values[index - 1]).map do |x_val, y_val, z_val|
         random_factor * (x_val - y_val + z_val)

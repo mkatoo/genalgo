@@ -4,6 +4,7 @@ RSpec.describe Genalgo::Individual do
   let(:n_dim) { 5 }
   let(:upper_limit) { 10.0 }
   let(:lower_limit) { -5.0 }
+  let(:random) { Random.new(123) }
 
   describe "#initialize" do
     context "with default parameters" do
@@ -113,7 +114,7 @@ RSpec.describe Genalgo::Individual do
 
     it "regenerates the chromosome within bounds" do
       original_chromosome = individual.chromosome.dup
-      individual.initialize_chromosome
+      individual.initialize_chromosome(random: random)
 
       expect(individual.chromosome).not_to eq(original_chromosome)
       individual.chromosome.each do |gene|
@@ -122,7 +123,7 @@ RSpec.describe Genalgo::Individual do
     end
 
     it "maintains the correct chromosome size" do
-      individual.initialize_chromosome
+      individual.initialize_chromosome(random: random)
       expect(individual.chromosome.size).to eq(n_dim)
     end
   end
@@ -136,18 +137,34 @@ RSpec.describe Genalgo::Individual do
     end
 
     context "with seeded random" do
-      before { srand(12_345) }
-      after { srand }
-
       it "produces reproducible results with same seed" do
-        srand(12_345)
-        individual1 = described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
-
-        srand(12_345)
-        individual2 = described_class.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
+        bounds = Genalgo::Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
+        individual1 = described_class.new(bounds: bounds, random: Random.new(12_345))
+        individual2 = described_class.new(bounds: bounds, random: Random.new(12_345))
 
         expect(individual1.chromosome).to eq(individual2.chromosome)
       end
+    end
+  end
+
+  describe "#dup" do
+    it "copies chromosome and fitness without drawing from the random stream" do
+      bounds = Genalgo::Bounds.new(n_dim: n_dim, upper_limit: upper_limit, lower_limit: lower_limit)
+      individual = described_class.new(bounds: bounds, random: random)
+      individual.fitness = 42.0
+      expect(random).not_to receive(:rand)
+      expect(Random).not_to receive(:new)
+
+      copy = individual.dup
+
+      expect(copy.bounds).to be(bounds)
+      expect(copy.chromosome).to eq(individual.chromosome)
+      expect(copy.chromosome).not_to be(individual.chromosome)
+      expect(copy.fitness).to eq(42.0)
+      copy.chromosome[0] = 999.0
+      copy.fitness = -1.0
+      expect(individual.chromosome[0]).not_to eq(999.0)
+      expect(individual.fitness).to eq(42.0)
     end
   end
 end

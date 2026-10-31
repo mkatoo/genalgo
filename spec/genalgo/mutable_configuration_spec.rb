@@ -41,9 +41,9 @@ RSpec.describe Genalgo::MutableConfiguration do
     second = input.build
 
     expect(first.to_h).to include(n_dim: 2, upper_limit: 1.0, seed: 123)
-    expect(first.bounds_object.random_chromosome.size).to eq(2)
+    expect(first.bounds_object.random_chromosome(random: Random.new(123)).size).to eq(2)
     expect(second.to_h).to include(n_dim: 3, upper_limit: 10.0, seed: 0)
-    expect(second.bounds_object.random_chromosome.size).to eq(3)
+    expect(second.bounds_object.random_chromosome(random: Random.new(123)).size).to eq(3)
     expect(first).to be_frozen
     expect(second).to be_frozen
     expect(input).not_to be_frozen

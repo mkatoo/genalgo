@@ -6,7 +6,8 @@ module Genalgo
   class BlxAlphaCrossover
     DEFAULT_ALPHA = 0.36
 
-    def initialize(alpha: DEFAULT_ALPHA)
+    def initialize(random:, alpha: DEFAULT_ALPHA)
+      @random = random
       @alpha = alpha
     end
 
@@ -29,7 +30,7 @@ module Genalgo
       width = y_val - x_val
       r_upper = [y_val + (@alpha * width), bounds[:upper]].min
       r_lower = [x_val - (@alpha * width), bounds[:lower]].max
-      (Random.rand * (r_upper - r_lower)) + r_lower
+      (@random.rand * (r_upper - r_lower)) + r_lower
     end
   end
 end

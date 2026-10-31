@@ -2,7 +2,8 @@
 
 RSpec.describe Genalgo::SimplexCrossover do
   let(:n_dim) { 3 }
-  subject(:crossover) { described_class.new(n_dim) }
+  let(:random) { Random.new(123) }
+  subject(:crossover) { described_class.new(n_dim, random: random) }
 
   let(:parent1) do
     individual = Genalgo::Individual.new(n_dim: n_dim, upper_limit: 10.0, lower_limit: -10.0)
@@ -36,7 +37,7 @@ RSpec.describe Genalgo::SimplexCrossover do
 
   describe "#initialize" do
     it "accepts n_dim parameter" do
-      crossover_2d = described_class.new(2)
+      crossover_2d = described_class.new(2, random: random)
       expect(crossover_2d).to be_a(described_class)
     end
 
@@ -109,7 +110,7 @@ RSpec.describe Genalgo::SimplexCrossover do
   describe "#calculate_epsilon" do
     # Testing private method through behavior
     context "epsilon calculation effects" do
-      let(:different_dim_crossover) { described_class.new(5) }
+      let(:different_dim_crossover) { described_class.new(5, random: random) }
 
       it "produces different results for different dimensions" do
         child_3d = crossover.crossover(parents)
@@ -186,7 +187,7 @@ RSpec.describe Genalgo::SimplexCrossover do
   describe "different dimensions" do
     [1, 2, 4, 5].each do |dim|
       context "with #{dim} dimensions" do
-        let(:dim_crossover) { described_class.new(dim) }
+        let(:dim_crossover) { described_class.new(dim, random: random) }
         let(:dim_parents) do
           Array.new(dim + 1) do |i|
             chromosome = Array.new(dim) { |j| i + (j * 0.5) }
@@ -262,7 +263,7 @@ RSpec.describe Genalgo::SimplexCrossover do
       lower_limit: -100.0
     )
     individual.chromosome = chromosome
-    individual.fitness = rand * 10
+    individual.fitness = random.rand * 10
     individual
   end
 end

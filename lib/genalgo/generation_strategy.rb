@@ -6,9 +6,10 @@ module Genalgo
   # Base class for generation strategies in genetic algorithms
   # Defines the interface for different generation approaches
   class GenerationStrategy
-    def initialize(configuration, crossover:)
+    def initialize(configuration, crossover:, random:)
+      @random = random
       @crossover_strategy = crossover
-      @selection_strategy = EliteRouletteSelection.new
+      @selection_strategy = EliteRouletteSelection.new(random: random)
       @evaluation_function = configuration.evaluation_function
       @n_dim = configuration.n_dim
       @bounds = configuration.bounds

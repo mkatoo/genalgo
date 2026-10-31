@@ -54,9 +54,11 @@ evaluation take effect on the next execution. If validation fails, the previous
 execution's results and snapshot remain available.
 
 Each execution creates one `MGG` instance from its validated configuration and
-reuses it for all generation updates. To control generation updates directly, use
-`MGG.new(configuration)` and call `next_generation(population)` on that instance.
-The population must already have fitness values. Generation settings belong to
+reuses it for all generation updates. To control generation updates directly,
+create `random = Random.new(configuration.seed)` and pass that same generator to
+both `Population.new` and `MGG.new(configuration, random: random)` through the
+`random:` keyword. Evaluate the initial population, then call
+`next_generation(population)` on the MGG instance. Generation settings belong to
 each instance; there are no class-level settings.
 
 Use `MutableConfiguration` to prepare settings incrementally:
@@ -84,6 +86,12 @@ evaluation callable is retained by reference.
 An omitted seed is generated once and retained across unrelated edits and repeated
 executions. Assigning a new seed explicitly, or assigning `nil` to generate one,
 changes it for subsequent executions.
+
+Each execution uses its own random stream for initialization, parent sampling,
+crossover, and selection. Global `rand`/`srand` calls and other executors do not
+affect that stream. Genalgo does not advance or reseed the global stream.
+Reproducibility assumes a deterministic evaluation function; a stochastic
+evaluation function controls its own randomness.
 
 The evaluation budget must cover the initial population (`n_eval >= n_pop`).
 BLX-alpha requires at least 2 individuals; Simplex requires at least `n_dim + 1`.

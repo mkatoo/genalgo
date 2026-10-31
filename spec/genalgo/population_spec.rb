@@ -2,6 +2,7 @@
 
 RSpec.describe Genalgo::Population do
   let(:n_pop) { 10 }
+  let(:random) { Random.new(123) }
   let(:n_dim) { 5 }
   let(:lower_limit) { -10.0 }
   let(:upper_limit) { 10.0 }
@@ -73,17 +74,6 @@ RSpec.describe Genalgo::Population do
       expect(population).to all(be_within_bounds)
     end
 
-    it "supports the configuration keyword as a compatibility entry point" do
-      configuration = Genalgo::Configuration.new(
-        n_pop: 10, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit,
-        n_eval: 10, evaluation_function: lambda(&:sum)
-      )
-      population = described_class.new(configuration: configuration)
-
-      expect(population.size).to eq(10)
-      expect(population.map(&:bounds)).to all(be(configuration.bounds_object))
-    end
-
     it "allows equal limits through legacy initialization" do
       population = described_class.new(n_pop: 3, n_dim: 2, lower_limit: 1.0, upper_limit: 1.0)
 
@@ -100,7 +90,7 @@ RSpec.describe Genalgo::Population do
       expect(copy.map(&:bounds)).to all(be(bounds))
       copy.first.chromosome[0] = 100.0
       copy.first.fitness = 100.0
-      copy.pop(1)
+      copy.pop(1, random: random)
 
       expect(population.size).to eq(3)
       expect(population.first.chromosome).to eq(original)
@@ -174,17 +164,24 @@ RSpec.describe Genalgo::Population do
     end
 
     it "returns the requested number of individuals" do
-      sampled = population.sample(3)
+      sampled = population.sample(3, random: random)
       expect(sampled.size).to eq(3)
     end
 
+    it "reproduces sampling with independent random generators using the same seed" do
+      first = population.sample(3, random: Random.new(123))
+      second = population.sample(3, random: Random.new(123))
+
+      expect(first).to eq(second)
+    end
+
     it "returns Individual instances" do
-      sampled = population.sample(2)
+      sampled = population.sample(2, random: random)
       expect(sampled).to all(be_a(Genalgo::Individual))
     end
 
     it "returns individuals from the population" do
-      sampled = population.sample(5)
+      sampled = population.sample(5, random: random)
       sampled.each do |individual|
         expect(population.to_a).to include(individual)
       end
@@ -192,12 +189,12 @@ RSpec.describe Genalgo::Population do
 
     it "does not modify the original population" do
       original_size = population.size
-      population.sample(3)
+      population.sample(3, random: random)
       expect(population.size).to eq(original_size)
     end
 
     it "handles sampling entire population" do
-      sampled = population.sample(n_pop)
+      sampled = population.sample(n_pop, random: random)
       expect(sampled.size).to eq(n_pop)
     end
   end
@@ -207,7 +204,7 @@ RSpec.describe Genalgo::Population do
       described_class.new(n_pop: n_pop, n_dim: n_dim, lower_limit: lower_limit, upper_limit: upper_limit)
     end
 
-    let(:individuals_to_delete) { population.sample(3) }
+    let(:individuals_to_delete) { population.sample(3, random: random) }
 
     it "removes individuals from population" do
       original_size = population.size
@@ -242,19 +239,19 @@ RSpec.describe Genalgo::Population do
 
     it "removes and returns the requested number of individuals" do
       original_size = population.size
-      popped = population.pop(3)
+      popped = population.pop(3, random: random)
 
       expect(popped.size).to eq(3)
       expect(population.size).to eq(original_size - 3)
     end
 
     it "returns Individual instances" do
-      popped = population.pop(2)
+      popped = population.pop(2, random: random)
       expect(popped).to all(be_a(Genalgo::Individual))
     end
 
     it "removes the returned individuals from population" do
-      popped = population.pop(3)
+      popped = population.pop(3, random: random)
       popped.each do |individual|
         expect(population.to_a).not_to include(individual)
       end
@@ -325,7 +322,7 @@ RSpec.describe Genalgo::Population do
       original_individuals = population.to_a.dup
 
       # Sample some individuals (sampling doesn't modify population)
-      population.sample(3)
+      population.sample(3, random: random)
 
       # Population should still contain all original individuals
       expect(population.size).to eq(n_pop)

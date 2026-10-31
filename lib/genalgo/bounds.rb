@@ -30,8 +30,8 @@ module Genalgo
       chromosome.map { |gene| gene.clamp(@lower_limit, @upper_limit) }
     end
 
-    def random_chromosome
-      Array.new(@n_dim) { (Random.rand * (@upper_limit - @lower_limit)) + @lower_limit }
+    def random_chromosome(random:)
+      Array.new(@n_dim) { (random.rand * (@upper_limit - @lower_limit)) + @lower_limit }
     end
 
     private

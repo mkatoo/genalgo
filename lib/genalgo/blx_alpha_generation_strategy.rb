@@ -9,7 +9,7 @@ module Genalgo
     def next_generation(population)
       population = population.dup
 
-      parent1, parent2 = population.pop(2)
+      parent1, parent2 = population.pop(2, random: @random)
 
       child1 = @crossover_strategy.crossover(parent1, parent2, @bounds)
       child2 = @crossover_strategy.crossover(parent1, parent2, @bounds)

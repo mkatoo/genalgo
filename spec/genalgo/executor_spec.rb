@@ -391,7 +391,9 @@ RSpec.describe Genalgo::Executor do
       [10, 50].each do |budget|
         it "creates one #{crossover} MGG instance for an execution with budget #{budget}" do
           executor = described_class.new(default_params.merge(crossover: crossover, n_eval: budget))
-          expect(Genalgo::MGG).to receive(:new).with(an_instance_of(Genalgo::Configuration)).once.and_call_original
+          expect(Genalgo::MGG).to receive(:new).with(
+            an_instance_of(Genalgo::Configuration), random: an_instance_of(Random)
+          ).once.and_call_original
 
           executor.execute
 

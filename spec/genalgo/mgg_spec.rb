@@ -2,6 +2,7 @@
 
 RSpec.describe Genalgo::MGG do
   let(:evaluation_function) { ->(chromosome) { chromosome.sum { |gene| gene * gene } } }
+  let(:random) { Random.new(params[:seed]) }
   let(:params) do
     {
       n_pop: 6, n_dim: 3, n_eval: 20, lower_limit: -1.0, upper_limit: 1.0,
@@ -11,11 +12,13 @@ RSpec.describe Genalgo::MGG do
 
   %i[blx_alpha simplex].each do |crossover|
     context "with #{crossover} crossover" do
-      subject(:generation) { described_class.new(configuration) }
+      subject(:generation) { described_class.new(configuration, random: random) }
 
       let(:configuration) { Genalgo::Configuration.new(params.merge(crossover: crossover)) }
       let(:population) do
-        population = Genalgo::Population.new(n_pop: configuration.n_pop, bounds: configuration.bounds_object)
+        population = Genalgo::Population.new(
+          n_pop: configuration.n_pop, bounds: configuration.bounds_object, random: random
+        )
         population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
         population
       end
@@ -70,8 +73,10 @@ RSpec.describe Genalgo::MGG do
       it "supports the minimum population required by the crossover" do
         minimum = crossover == :simplex ? configuration.n_dim + 1 : 2
         minimum_configuration = Genalgo::Configuration.new(configuration.to_h.merge(n_pop: minimum))
-        generation = described_class.new(minimum_configuration)
-        population = Genalgo::Population.new(n_pop: minimum, bounds: minimum_configuration.bounds_object)
+        generation = described_class.new(minimum_configuration, random: random)
+        population = Genalgo::Population.new(
+          n_pop: minimum, bounds: minimum_configuration.bounds_object, random: random
+        )
         population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
 
         result = generation.next_generation(population)
@@ -89,8 +94,11 @@ RSpec.describe Genalgo::MGG do
           crossover: crossover == :simplex ? :blx_alpha : :simplex, evaluation_function: other_evaluation
         )
         other_configuration = Genalgo::Configuration.new(other_params)
-        other_generation = described_class.new(other_configuration)
-        other_population = Genalgo::Population.new(n_pop: 2, bounds: other_configuration.bounds_object)
+        other_random = Random.new(other_configuration.seed)
+        other_generation = described_class.new(other_configuration, random: other_random)
+        other_population = Genalgo::Population.new(
+          n_pop: 2, bounds: other_configuration.bounds_object, random: other_random
+        )
         other_population.each { |individual| individual.fitness = 0.0 }
         expect(evaluation_function).to receive(:call).twice.and_call_original
         expect(other_evaluation).to receive(:call).twice.and_call_original

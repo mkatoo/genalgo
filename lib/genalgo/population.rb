@@ -7,13 +7,11 @@ module Genalgo
   class Population
     include Enumerable
 
-    def initialize(n_pop: nil, bounds: nil, skip_initialization: false, configuration: nil, **bound_params)
-      @n_pop = configuration ? configuration.n_pop : n_pop
-      @bounds = configuration&.bounds_object || bounds ||
-                Bounds.new(n_dim: nil, upper_limit: nil, lower_limit: nil, **bound_params)
+    def initialize(n_pop:, bounds: nil, random: Random.new, **bound_params)
+      @n_pop = n_pop
+      @bounds = bounds || Bounds.new(n_dim: nil, upper_limit: nil, lower_limit: nil, **bound_params)
       validate_parameters!
-      @population = []
-      initialize_population unless skip_initialization
+      initialize_population(random: random)
     end
 
     # @param individuals [Array<Genalgo::Individual>]
@@ -22,12 +20,12 @@ module Genalgo
     end
 
     # Randomly remove and return the requested number of individuals.
-    def pop(size)
-      delete sample(size)
+    def pop(size, random:)
+      delete sample(size, random: random)
     end
 
-    def sample(size)
-      @population.sample(size)
+    def sample(size, random:)
+      @population.sample(size, random: random)
     end
 
     def delete(individuals)
@@ -60,8 +58,8 @@ module Genalgo
 
     private
 
-    def initialize_population
-      @population = Array.new(@n_pop) { Individual.new(bounds: @bounds) }
+    def initialize_population(random:)
+      @population = Array.new(@n_pop) { Individual.new(bounds: @bounds, random: random) }
     end
 
     def initialize_copy(other)

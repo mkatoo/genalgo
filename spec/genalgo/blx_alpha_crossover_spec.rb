@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::BlxAlphaCrossover do
+  let(:random) { Random.new(123) }
   let(:bounds) { { upper: 10.0, lower: -10.0 } }
   let(:parent1) do
     individual = Genalgo::Individual.new(n_dim: 3, upper_limit: 10.0, lower_limit: -10.0)
@@ -24,7 +25,7 @@ RSpec.describe Genalgo::BlxAlphaCrossover do
 
   describe "#initialize" do
     context "with default parameters" do
-      subject(:crossover) { described_class.new }
+      subject(:crossover) { described_class.new(random: random) }
 
       it "uses the default alpha value" do
         # We can test this by verifying the behavior matches default alpha
@@ -33,7 +34,7 @@ RSpec.describe Genalgo::BlxAlphaCrossover do
     end
 
     context "with custom alpha" do
-      subject(:crossover) { described_class.new(alpha: 0.5) }
+      subject(:crossover) { described_class.new(random: random, alpha: 0.5) }
 
       it "accepts custom alpha value" do
         expect(crossover).to be_a(described_class)
@@ -42,7 +43,7 @@ RSpec.describe Genalgo::BlxAlphaCrossover do
   end
 
   describe "#crossover" do
-    subject(:crossover) { described_class.new }
+    subject(:crossover) { described_class.new(random: random) }
 
     let(:child) { crossover.crossover(parent1, parent2, bounds) }
 
@@ -140,7 +141,7 @@ RSpec.describe Genalgo::BlxAlphaCrossover do
   end
 
   describe "#blend_genes" do
-    subject(:crossover) { described_class.new(alpha: 0.5) }
+    subject(:crossover) { described_class.new(random: random, alpha: 0.5) }
 
     # Testing private method through public interface
     context "blending behavior" do
@@ -174,8 +175,8 @@ RSpec.describe Genalgo::BlxAlphaCrossover do
   end
 
   describe "alpha parameter effects" do
-    let(:small_alpha_crossover) { described_class.new(alpha: 0.1) }
-    let(:large_alpha_crossover) { described_class.new(alpha: 1.0) }
+    let(:small_alpha_crossover) { described_class.new(random: random, alpha: 0.1) }
+    let(:large_alpha_crossover) { described_class.new(random: random, alpha: 1.0) }
 
     it "produces different ranges with different alpha values" do
       small_alpha_children = Array.new(20) { small_alpha_crossover.crossover(parent1, parent2, bounds) }

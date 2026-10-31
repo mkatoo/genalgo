@@ -10,7 +10,7 @@ module Genalgo
     attr_accessor :fitness
     attr_reader :chromosome, :bounds
 
-    def initialize(chromosome: nil, bounds: nil, configuration: nil, **bound_params)
+    def initialize(chromosome: nil, bounds: nil, configuration: nil, random: Random.new, **bound_params)
       @bounds = if configuration
                   configuration.bounds_object
                 else
@@ -20,12 +20,12 @@ module Genalgo
       if chromosome
         @chromosome = @bounds.within_bounds?(chromosome) ? chromosome : @bounds.clamp_chromosome(chromosome)
       else
-        initialize_chromosome
+        initialize_chromosome(random: random)
       end
     end
 
-    def initialize_chromosome
-      @chromosome = @bounds.random_chromosome
+    def initialize_chromosome(random:)
+      @chromosome = @bounds.random_chromosome(random: random)
     end
 
     def chromosome=(new_chromosome)
@@ -61,10 +61,11 @@ module Genalgo
       @bounds.lower_limit
     end
 
-    def dup
-      copy = Individual.new(bounds: @bounds, chromosome: @chromosome.dup)
-      copy.fitness = @fitness
-      copy
+    private
+
+    def initialize_copy(other)
+      super
+      @chromosome = other.chromosome.dup
     end
   end
 end
