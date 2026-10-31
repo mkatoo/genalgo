@@ -1,84 +1,35 @@
 # frozen_string_literal: true
 
-require_relative "individual"
 require_relative "blx_alpha_crossover"
 require_relative "simplex_crossover"
-require_relative "elite_roulette_selection"
-require_relative "generation_manager"
+require_relative "blx_alpha_generation_strategy"
+require_relative "simplex_generation_strategy"
 
 module Genalgo
-  # Minimal Generation Gap (MGG)
+  # Minimal Generation Gap (MGG) for one execution's validated configuration.
   class MGG
-    class << self
-      attr_accessor :n_dim, :lower_limit, :upper_limit, :evaluation_function, :crossover
+    def initialize(configuration)
+      @generation_strategy = create_generation_strategy(configuration)
+    end
 
-      def evaluations_per_generation(configuration = nil)
-        manager = configuration ? generation_manager_for_configuration(configuration) : generation_manager
-        manager.evaluations_per_generation
-      end
+    def next_generation(population)
+      @generation_strategy.next_generation(population)
+    end
 
-      def next_generation(population, configuration = nil)
-        manager = configuration ? generation_manager_for_configuration(configuration) : generation_manager
-        manager.next_generation(population)
-      end
+    def evaluations_per_generation
+      @generation_strategy.evaluations_per_generation
+    end
 
-      private
+    private
 
-      def generation_manager_for_configuration(configuration)
-        # Don't cache configuration-based managers to allow for different configurations
-        create_generation_manager_for_configuration(configuration)
-      end
-
-      def generation_manager
-        crossover_strategy = create_crossover_strategy
-        selection_strategy = EliteRouletteSelection.new
-        bounds = { upper: @upper_limit, lower: @lower_limit }
-
-        GenerationManager.new(
-          crossover_strategy,
-          selection_strategy,
-          @evaluation_function,
-          @n_dim,
-          bounds
-        )
-      end
-
-      def create_generation_manager_for_configuration(configuration)
-        crossover_strategy = create_crossover_strategy_for_configuration(configuration)
-        selection_strategy = EliteRouletteSelection.new
-
-        GenerationManager.new(
-          crossover_strategy,
-          selection_strategy,
-          configuration.evaluation_function,
-          configuration.n_dim,
-          configuration.bounds
-        )
-      end
-
-      def create_crossover_strategy
-        case @crossover
-        when :blx_alpha
-          BlxAlphaCrossover.new
-        when :simplex
-          SimplexCrossover.new(@n_dim)
-        else
-          raise Genalgo::StrategyError.new("Unknown crossover type: #{@crossover}",
-                                           context: { crossover: @crossover, available_types: %i[blx_alpha simplex] })
-        end
-      end
-
-      def create_crossover_strategy_for_configuration(configuration)
-        case configuration.crossover
-        when :blx_alpha
-          BlxAlphaCrossover.new
-        when :simplex
-          SimplexCrossover.new(configuration.n_dim)
-        else
-          raise Genalgo::StrategyError.new("Unknown crossover type: #{configuration.crossover}",
-                                           context: { crossover: configuration.crossover,
-                                                      available_types: %i[blx_alpha simplex] })
-        end
+    def create_generation_strategy(configuration)
+      case configuration.crossover
+      when :blx_alpha
+        BlxAlphaGenerationStrategy.new(configuration, crossover: BlxAlphaCrossover.new)
+      when :simplex
+        SimplexGenerationStrategy.new(configuration, crossover: SimplexCrossover.new(configuration.n_dim))
+      else
+        raise StrategyError, "Unknown crossover type: #{configuration.crossover}"
       end
     end
   end

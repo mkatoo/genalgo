@@ -15,7 +15,7 @@ module Genalgo
       @configuration = MutableConfiguration.new(params)
     end
 
-    # Backward compatibility: delegate attribute access to configuration
+    # Editable settings for the next execution.
     def n_pop
       @configuration.n_pop
     end
@@ -82,16 +82,12 @@ module Genalgo
 
     def execute
       configuration = @configuration.build
-      @execution_configuration = configuration
+      generation = MGG.new(configuration)
       setup(configuration)
       initialize_population(configuration)
       add_history
 
-      while @evals + MGG.evaluations_per_generation(configuration) <= configuration.n_eval
-        @population = MGG.next_generation(@population, configuration)
-        @evals += MGG.evaluations_per_generation(configuration)
-        add_history
-      end
+      evolve(generation, configuration.n_eval)
     end
 
     def best_individual
@@ -104,15 +100,17 @@ module Genalgo
 
     def setup(configuration)
       Random.srand(configuration.seed)
-
-      # Set MGG attributes for backward compatibility
-      MGG.lower_limit = configuration.lower_limit
-      MGG.upper_limit = configuration.upper_limit
-      MGG.evaluation_function = configuration.evaluation_function
-      MGG.n_dim = configuration.n_dim
-      MGG.crossover = configuration.crossover
-
+      @execution_configuration = configuration
       @history = History.new
+    end
+
+    def evolve(generation, evaluation_budget)
+      evaluations_per_generation = generation.evaluations_per_generation
+      while @evals + evaluations_per_generation <= evaluation_budget
+        @population = generation.next_generation(@population)
+        @evals += evaluations_per_generation
+        add_history
+      end
     end
 
     def initialize_population(configuration)

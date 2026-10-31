@@ -53,6 +53,12 @@ snapshot available as `executor.execution_configuration`. Changes made during an
 evaluation take effect on the next execution. If validation fails, the previous
 execution's results and snapshot remain available.
 
+Each execution creates one `MGG` instance from its validated configuration and
+reuses it for all generation updates. To control generation updates directly, use
+`MGG.new(configuration)` and call `next_generation(population)` on that instance.
+The population must already have fitness values. Generation settings belong to
+each instance; there are no class-level settings.
+
 Use `MutableConfiguration` to prepare settings incrementally:
 
 ```ruby

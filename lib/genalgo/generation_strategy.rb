@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
+require_relative "elite_roulette_selection"
+
 module Genalgo
   # Base class for generation strategies in genetic algorithms
   # Defines the interface for different generation approaches
   class GenerationStrategy
-    def initialize(crossover_strategy, selection_strategy, evaluation_function, n_dim, bounds)
-      @crossover_strategy = crossover_strategy
-      @selection_strategy = selection_strategy
-      @evaluation_function = evaluation_function
-      @n_dim = n_dim
-      @bounds = bounds
+    def initialize(configuration, crossover:)
+      @crossover_strategy = crossover
+      @selection_strategy = EliteRouletteSelection.new
+      @evaluation_function = configuration.evaluation_function
+      @n_dim = configuration.n_dim
+      @bounds = configuration.bounds
     end
 
     # Abstract method to be implemented by subclasses
@@ -20,11 +22,7 @@ module Genalgo
 
     # Number of evaluations performed per generation
     def evaluations_per_generation
-      if @crossover_strategy.respond_to?(:evaluations_per_generation)
-        @crossover_strategy.evaluations_per_generation
-      else
-        2
-      end
+      2
     end
 
     protected

@@ -265,6 +265,7 @@ RSpec.describe Genalgo::Executor do
 
     it "applies edits on the next execution without changing the previous snapshot" do
       executor = described_class.new(default_params)
+      expect(Genalgo::MGG).to receive(:new).twice.and_call_original
       executor.execute
       previous = executor.execution_configuration
       previous_population = executor.population
@@ -273,20 +274,28 @@ RSpec.describe Genalgo::Executor do
       executor.n_eval = 10
       executor.lower_limit = 99.0
       executor.upper_limit = 100.0
+      executor.crossover = :simplex
+      calls = 0
+      executor.evaluation_function = lambda do |chromosome|
+        calls += 1
+        chromosome.sum
+      end
 
       executor.execute
 
-      expect(executor.execution_configuration.to_h).to include(n_dim: 1, n_pop: 4, n_eval: 10)
+      expect(calls).to eq(10)
+      expect(executor.execution_configuration.to_h).to include(n_dim: 1, n_pop: 4, n_eval: 10, crossover: :simplex)
       expect(executor.history.first.evaluations).to eq(4)
       expect(executor.history.last.evaluations).to eq(10)
       expect(executor.population.map(&:chromosome).flatten).to all(be_between(99.0, 100.0))
-      expect(previous.to_h).to include(n_dim: 3, n_pop: 10, n_eval: 50)
+      expect(previous.to_h).to include(n_dim: 3, n_pop: 10, n_eval: 50, crossover: :blx_alpha)
       expect(previous_population.map(&:n_dim)).to all(eq(3))
     end
 
     it "rejects an insufficient budget before evaluating or creating run state" do
       calls = 0
       executor = described_class.new(default_params.merge(n_eval: 5, evaluation_function: ->(_x) { calls += 1 }))
+      expect(Genalgo::MGG).not_to receive(:new)
 
       expect { executor.execute }.to raise_error(Genalgo::ConfigurationError)
       expect(calls).to eq(0)
@@ -378,16 +387,17 @@ RSpec.describe Genalgo::Executor do
   end
 
   describe "MGG integration" do
-    subject(:executor) { described_class.new(default_params) }
+    %i[blx_alpha simplex].each do |crossover|
+      [10, 50].each do |budget|
+        it "creates one #{crossover} MGG instance for an execution with budget #{budget}" do
+          executor = described_class.new(default_params.merge(crossover: crossover, n_eval: budget))
+          expect(Genalgo::MGG).to receive(:new).with(an_instance_of(Genalgo::Configuration)).once.and_call_original
 
-    it "configures MGG correctly during setup" do
-      executor.execute
+          executor.execute
 
-      # MGG should be configured with the executor's parameters
-      expect(Genalgo::MGG.n_dim).to eq(3)
-      expect(Genalgo::MGG.lower_limit).to eq(-5.0)
-      expect(Genalgo::MGG.upper_limit).to eq(5.0)
-      expect(Genalgo::MGG.crossover).to eq(:blx_alpha)
+          expect(executor.history.last.evaluations).to eq(budget)
+        end
+      end
     end
   end
 
