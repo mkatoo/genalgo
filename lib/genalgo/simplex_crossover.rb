@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "errors"
+
 module Genalgo
   # Implements Simplex crossover for real-coded genetic algorithms.
   # Uses n_dim+1 parents to create offspring via simplex transformation.
@@ -24,7 +26,7 @@ module Genalgo
     private
 
     def calculate_mean_chromosome(parents)
-      parents.map(&:chromosome).transpose.map { |values| values.sum / values.size }
+      parents.map(&:chromosome).transpose.map { |values| values.sum.fdiv(values.size) }
     end
 
     def transform_parents(parents, mean, eps)

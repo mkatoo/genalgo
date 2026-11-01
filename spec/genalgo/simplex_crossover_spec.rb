@@ -34,6 +34,14 @@ RSpec.describe Genalgo::SimplexCrossover do
     expect(crossover.crossover(identical).chromosome).to eq([0.0, 15.0, 3.0])
   end
 
+  it "uses a fractional centroid for integer coordinates" do
+    bounds = Genalgo::Bounds.new(lower: [-10], upper: [10])
+    parents = [0, 1].map { |gene| Genalgo::Individual.new(bounds: bounds, chromosome: [gene]) }
+    allow(random).to receive(:rand).and_return(0.0)
+
+    expect(crossover.crossover(parents).chromosome.first).to be_within(1e-12).of(0.5 + (Math.sqrt(3) / 2))
+  end
+
   [0, 1, 3, 5].each do |count|
     it "rejects #{count} parents when the bounds require four" do
       candidates = Array.new(count) { |index| parents[index % parents.size] }

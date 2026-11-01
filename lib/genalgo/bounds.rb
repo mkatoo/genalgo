@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "errors"
+
 module Genalgo
   # Immutable coordinate intervals shared by every individual in a population.
   class Bounds

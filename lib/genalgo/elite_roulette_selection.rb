@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "errors"
+
 module Genalgo
   # Implements elite strategy combined with roulette wheel selection.
   # Preserves the best individual and selects remaining using fitness-proportionate selection.
@@ -7,11 +9,18 @@ module Genalgo
     DEFAULT_SCALING_FACTOR = 0.5
 
     def initialize(random:, scaling_factor: DEFAULT_SCALING_FACTOR)
+      unless scaling_factor.is_a?(Numeric) && scaling_factor.real? && scaling_factor.finite? && scaling_factor.positive?
+        raise ConfigurationError, "Scaling factor must be a finite positive real number"
+      end
+
       @random = random
       @scaling_factor = scaling_factor
     end
 
     def select(individuals, size)
+      unless size.is_a?(Integer) && size.between?(0, individuals.size)
+        raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
+      end
       return [] if size.zero?
 
       sorted_individuals = individuals.sort_by(&:fitness)
@@ -53,7 +62,7 @@ module Genalgo
 
       size.times.map do
         r = @random.rand
-        cumulative_probs.index { |cp| r <= cp } - 1
+        (cumulative_probs.index { |cp| r < cp } || (cumulative_probs.size - 1)) - 1
       end
     end
   end

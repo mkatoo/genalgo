@@ -102,8 +102,8 @@ RSpec.describe Genalgo::EliteRouletteSelection do
     end
 
     context "with empty individuals array" do
-      it "handles empty array" do
-        expect { selector.select([], 1) }.not_to raise_error
+      it "rejects selecting from an empty array" do
+        expect { selector.select([], 1) }.to raise_error(Genalgo::StrategyError)
       end
     end
 
@@ -216,6 +216,25 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   describe "edge cases" do
     subject(:selector) { described_class.new(random: random) }
 
+    it "selects the first non-elite interval when the random value is zero" do
+      allow(random).to receive(:rand).and_return(0.0)
+
+      expect(selector.select(individuals, 2).map(&:fitness)).to eq([5.0, 2.0])
+    end
+
+    [-1, 1.5, nil].each do |size|
+      it "rejects an invalid selection size #{size.inspect}" do
+        expect { selector.select(individuals, size) }.to raise_error(Genalgo::StrategyError)
+      end
+    end
+
+    [0, -0.1, Float::NAN, Float::INFINITY, Complex(1, 1), nil].each do |factor|
+      it "rejects an invalid scaling factor #{factor.inspect}" do
+        expect { described_class.new(random: random, scaling_factor: factor) }
+          .to raise_error(Genalgo::ConfigurationError)
+      end
+    end
+
     context "with single individual" do
       let(:single_individual) { [create_individual(fitness: 5.0)] }
 
@@ -229,10 +248,8 @@ RSpec.describe Genalgo::EliteRouletteSelection do
     context "with requesting more than available" do
       let(:few_individuals) { [create_individual(fitness: 1.0), create_individual(fitness: 2.0)] }
 
-      it "handles over-selection gracefully" do
-        # This might cause issues depending on implementation
-        # We'll test what actually happens
-        expect { selector.select(few_individuals, 5) }.not_to raise_error
+      it "rejects requesting more individuals than available" do
+        expect { selector.select(few_individuals, 5) }.to raise_error(Genalgo::StrategyError)
       end
     end
 
