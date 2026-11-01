@@ -59,6 +59,8 @@ module Genalgo
     end
 
     def finite_real?(value)
+      return value.finite? if value.is_a?(Float)
+
       value.is_a?(Numeric) && value.real? && value.finite? && value.abs <= Float::MAX
     end
 

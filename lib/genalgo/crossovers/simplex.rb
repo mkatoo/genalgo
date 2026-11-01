@@ -18,7 +18,7 @@ module Genalgo
         validate_parents!(parents, bounds)
         vertices = expand(parents, bounds.dimension)
         offset = sample_offset(vertices, bounds.dimension, random)
-        bounds.clamp(vertices.last.zip(offset).map { |vertex, delta| vertex + delta })
+        bounds.clamp(Array.new(bounds.dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] })
       end
 
       private
@@ -35,7 +35,9 @@ module Genalgo
         centroid = parents.transpose.map { |genes| genes.sum.fdiv(genes.size) }
         expansion = Math.sqrt(dimension + 2)
         parents.map do |parent|
-          parent.zip(centroid).map { |gene, mean| mean + (expansion * (gene - mean)) }
+          Array.new(dimension) do |coordinate|
+            centroid[coordinate] + (expansion * (parent[coordinate] - centroid[coordinate]))
+          end
         end
       end
 
@@ -43,8 +45,10 @@ module Genalgo
         offset = Array.new(dimension, 0.0)
         (1..dimension).each do |index|
           factor = random.rand**(1.0 / index)
-          offset = vertices[index - 1].zip(vertices[index], offset).map do |previous, current, delta|
-            factor * (previous - current + delta)
+          previous = vertices[index - 1]
+          current = vertices[index]
+          offset = Array.new(dimension) do |coordinate|
+            factor * (previous[coordinate] - current[coordinate] + offset[coordinate])
           end
         end
         offset
