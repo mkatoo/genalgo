@@ -1,121 +1,76 @@
 # frozen_string_literal: true
 
 RSpec.describe Genalgo::MGG do
-  let(:evaluation_function) { ->(chromosome) { chromosome.sum { |gene| gene * gene } } }
-  let(:random) { Random.new(params[:seed]) }
-  let(:params) do
-    {
-      n_pop: 6, n_eval: 20, bounds: Genalgo::Bounds.new(lower: Array.new(3, -1.0), upper: Array.new(3, 1.0)),
-      evaluation_function: evaluation_function, seed: 123
-    }
+  let(:bounds) { Genalgo::Bounds.new(lower: [-1, -1, -1], upper: [1, 1, 1]) }
+  let(:individuals) do
+    Array.new(6) do |index|
+      genes = Array.new(3, index / 10.0)
+      Genalgo::Individual.new(bounds: bounds, chromosome: genes, fitness: genes.sum { |gene| gene * gene })
+    end
   end
+  let(:population) { Genalgo::Population.new(individuals) }
+  let(:random) { Random.new(123) }
 
-  %i[blx_alpha simplex].each do |crossover|
-    context "with #{crossover} crossover" do
-      subject(:generation) { described_class.new(configuration, random: random) }
+  [Genalgo::Crossovers::BlxAlpha.new, Genalgo::Crossovers::Simplex.new].each do |crossover|
+    context "with #{crossover.class.name}" do
+      let(:configuration) do
+        Genalgo::Configuration.new(bounds: bounds, population_size: 6, max_evaluations: 20,
+                                   crossover: crossover, seed: 123)
+      end
+      let(:evaluator) do
+        Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 4) { |genes| genes.sum { |gene| gene * gene } }
+      end
+      subject(:generation) { described_class.new(configuration, evaluator: evaluator, random: random) }
 
-      let(:configuration) { Genalgo::Configuration.new(params.merge(crossover: crossover)) }
-      let(:population) do
-        population = Genalgo::Population.new(
-          n_pop: configuration.n_pop, bounds: configuration.bounds, random: random
-        )
-        population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
-        population
+      it "evaluates two children and retains the best across successive updates" do
+        original_best = population.best_individual
+        2.times { generation.step(population) }
+
+        expect(evaluator.evaluations).to eq(4)
+        expect(population.size).to eq(6)
+        expect(population.best_individual.fitness).to be <= original_best.fitness
+        expect(population.map(&:chromosome)).to all(satisfy { |genes| bounds.within_bounds?(genes) })
       end
 
-      it "evaluates two children, preserves the population size, and retains the best fitness" do
-        initial_population = population
-        best_fitness = initial_population.best_individual.fitness
-        expect(evaluation_function).to receive(:call).twice.and_call_original
+      it "keeps slots unchanged if the second child evaluation fails" do
+        calls = 0
+        evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 2) do
+          calls += 1
+          raise "failed child" if calls == 2
 
-        result = generation.next_generation(initial_population)
-
-        expect(generation.evaluations_per_generation).to eq(2)
-        expect(result).to be_a(Genalgo::Population)
-        expect(result.size).to eq(configuration.n_pop)
-        expect(result.best_individual.fitness).to be <= best_fitness
-        result.each do |individual|
-          expect(individual).to be_within_bounds
-          expect(individual.chromosome.size).to eq(configuration.n_dim)
-          expect(individual.fitness).to eq(individual.chromosome.sum { |gene| gene * gene })
+          0
         end
+        generation = described_class.new(configuration, evaluator: evaluator, random: random)
+        original = population.to_a
+
+        expect { generation.step(population) }.to raise_error(Genalgo::EvaluationError)
+        expect(evaluator.evaluations).to eq(2)
+        expect(population.to_a).to eq(original)
       end
 
-      it "evolves successive generations using the same instance" do
-        current = population
-        best_fitness = current.best_individual.fitness
-        expect(evaluation_function).to receive(:call).exactly(6).times.and_call_original
+      it "refuses an incomplete step before evaluating either child" do
+        evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 1) { raise "must not be called" }
+        generation = described_class.new(configuration, evaluator: evaluator, random: random)
 
-        3.times { current = generation.next_generation(current) }
-
-        expect(current.size).to eq(configuration.n_pop)
-        expect(current).to all(be_within_bounds)
-        expect(current.best_individual.fitness).to be <= best_fitness
-      end
-
-      it "preserves the input individuals, chromosomes, and fitness values" do
-        original_individuals = population.to_a
-        original_values = population.map { |individual| [individual.chromosome.dup, individual.fitness] }
-
-        result = generation.next_generation(population)
-
-        expect(population.to_a).to eq(original_individuals)
-        expect(population.map { |individual| [individual.chromosome, individual.fitness] }).to eq(original_values)
-
-        result.each do |individual|
-          individual.chromosome.replace(configuration.bounds.lower)
-          individual.fitness = -100.0
-        end
-
-        expect(population.map { |individual| [individual.chromosome, individual.fitness] }).to eq(original_values)
-      end
-
-      it "supports the minimum population required by the crossover" do
-        minimum = crossover == :simplex ? configuration.n_dim + 1 : 2
-        minimum_configuration = Genalgo::Configuration.new(configuration.to_h.merge(n_pop: minimum))
-        generation = described_class.new(minimum_configuration, random: random)
-        population = Genalgo::Population.new(
-          n_pop: minimum, bounds: minimum_configuration.bounds, random: random
-        )
-        population.each { |individual| individual.fitness = evaluation_function.call(individual.chromosome) }
-
-        result = generation.next_generation(population)
-
-        expect(result.size).to eq(minimum)
-        expect(result).to all(be_within_bounds)
-      end
-
-      it "keeps its settings when another instance uses different dimensions, bounds, and evaluation" do
-        first_generation = generation
-        first_population = population
-        other_evaluation = ->(_chromosome) { -100.0 }
-        other_params = params.merge(
-          n_pop: 2, bounds: Genalgo::Bounds.new(lower: [10.0], upper: [11.0]),
-          crossover: crossover == :simplex ? :blx_alpha : :simplex, evaluation_function: other_evaluation
-        )
-        other_configuration = Genalgo::Configuration.new(other_params)
-        other_random = Random.new(other_configuration.seed)
-        other_generation = described_class.new(other_configuration, random: other_random)
-        other_population = Genalgo::Population.new(
-          n_pop: 2, bounds: other_configuration.bounds, random: other_random
-        )
-        other_population.each { |individual| individual.fitness = 0.0 }
-        expect(evaluation_function).to receive(:call).twice.and_call_original
-        expect(other_evaluation).to receive(:call).twice.and_call_original
-
-        first_result = first_generation.next_generation(first_population)
-        other_result = other_generation.next_generation(other_population)
-
-        expect(first_result.size).to eq(configuration.n_pop)
-        first_result.each do |individual|
-          expect(individual.bounds).to be(configuration.bounds)
-          expect(individual.fitness).to eq(individual.chromosome.sum { |gene| gene * gene })
-        end
-        expect(other_result.size).to eq(2)
-        expect(other_result).to all(be_within_bounds)
-        expect(other_result.map(&:n_dim)).to all(eq(1))
-        expect(other_result.best_individual.fitness).to eq(-100.0)
+        expect { generation.step(population) }.to raise_error(Genalgo::EvaluationError, /two children/)
+        expect(evaluator.evaluations).to eq(0)
       end
     end
+  end
+
+  it "uses all Simplex parents for crossover but replaces only the chosen two" do
+    indices = [0, 1, 2, 3]
+    original = population.to_a
+    configuration = Genalgo::Configuration.new(bounds: bounds, population_size: 6, max_evaluations: 20,
+                                               crossover: Genalgo::Crossovers::Simplex.new)
+    evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 2) { |genes| genes.sum { |gene| gene * gene } }
+    expect(population).to receive(:sample_indices).with(4, random: random).and_return(indices)
+    allow(indices).to receive(:sample).with(2, random: random).and_return([1, 3])
+
+    described_class.new(configuration, evaluator: evaluator, random: random).step(population)
+
+    [0, 2, 4, 5].each { |index| expect(population[index]).to be(original[index]) }
+    expect(population.size).to eq(6)
+    expect(evaluator.evaluations).to eq(2)
   end
 end

@@ -216,6 +216,24 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   describe "edge cases" do
     subject(:selector) { described_class.new(random: random) }
 
+    it "selects without replacement" do
+      allow(random).to receive(:rand).and_return(0.0)
+
+      expect(selector.select(individuals, individuals.size).uniq.size).to eq(individuals.size)
+    end
+
+    it "handles fitness ranges whose unscaled difference would overflow" do
+      wide = [-1e308, -1e307, 1e307, 1e308].map { |fitness| create_individual(fitness: fitness) }
+
+      expect(selector.select(wide, 4)).to match_array(wide)
+    end
+
+    it "handles a very small positive scaling factor" do
+      tiny = described_class.new(random: random, scaling_factor: 1e-320)
+
+      expect(tiny.select(individuals, 3).uniq.size).to eq(3)
+    end
+
     it "selects the first non-elite interval when the random value is zero" do
       allow(random).to receive(:rand).and_return(0.0)
 
@@ -290,8 +308,6 @@ RSpec.describe Genalgo::EliteRouletteSelection do
 
   def create_individual(fitness:)
     bounds = Genalgo::Bounds.new(lower: Array.new(3, -10.0), upper: Array.new(3, 10.0))
-    individual = Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0])
-    individual.fitness = fitness
-    individual
+    Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0], fitness: fitness)
   end
 end

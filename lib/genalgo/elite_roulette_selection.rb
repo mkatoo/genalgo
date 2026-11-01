@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "errors"
+require_relative "individual"
 
 module Genalgo
   # Implements elite strategy combined with roulette wheel selection.
@@ -9,18 +10,17 @@ module Genalgo
     DEFAULT_SCALING_FACTOR = 0.5
 
     def initialize(random:, scaling_factor: DEFAULT_SCALING_FACTOR)
-      unless scaling_factor.is_a?(Numeric) && scaling_factor.real? && scaling_factor.finite? && scaling_factor.positive?
+      unless scaling_factor.is_a?(Numeric) && scaling_factor.real? && scaling_factor.finite? &&
+             scaling_factor.abs <= Float::MAX && scaling_factor.to_f.positive?
         raise ConfigurationError, "Scaling factor must be a finite positive real number"
       end
 
       @random = random
-      @scaling_factor = scaling_factor
+      @scaling_factor = scaling_factor.to_f
     end
 
     def select(individuals, size)
-      unless size.is_a?(Integer) && size.between?(0, individuals.size)
-        raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
-      end
+      validate_selection!(individuals, size)
       return [] if size.zero?
 
       sorted_individuals = individuals.sort_by(&:fitness)
@@ -35,21 +35,34 @@ module Genalgo
 
     private
 
-    def select_non_elite(individuals, count)
-      return [] if count.zero? || individuals.empty?
+    def validate_selection!(individuals, size)
+      unless individuals.all? { |individual| individual.is_a?(Individual) }
+        raise StrategyError, "Selection requires evaluated individuals"
+      end
+      return if size.is_a?(Integer) && size.between?(0, individuals.size)
 
-      scaled_fitness = calculate_scaled_fitness(individuals)
-      selection_probabilities = calculate_probabilities(scaled_fitness)
-      random_choice(count, selection_probabilities).map { |i| individuals[i] }
+      raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
+    end
+
+    def select_non_elite(individuals, count)
+      remaining = individuals.dup
+      Array.new(count) do
+        probabilities = calculate_probabilities(calculate_scaled_fitness(remaining))
+        remaining.delete_at(random_choice(probabilities))
+      end
     end
 
     def calculate_scaled_fitness(individuals)
-      width = individuals.last.fitness - individuals.first.fitness
-      width = 1 if width.zero?
+      normalized = normalized_fitness(individuals)
+      width = normalized.last - normalized.first
+      return Array.new(individuals.size, 1.0) if width.zero?
 
-      individuals.map do |individual|
-        width / (individual.fitness - individuals.first.fitness + (@scaling_factor * width))
-      end
+      normalized.map { |fitness| @scaling_factor / (((fitness - normalized.first) / width) + @scaling_factor) }
+    end
+
+    def normalized_fitness(individuals)
+      scale = individuals.map { |individual| individual.fitness.abs }.max
+      individuals.map { |individual| scale.zero? ? 0.0 : individual.fitness / scale }
     end
 
     def calculate_probabilities(scaled_fitness)
@@ -57,13 +70,14 @@ module Genalgo
       scaled_fitness.map { |fitness| fitness / total }
     end
 
-    def random_choice(size, probs)
-      cumulative_probs = probs.inject([0.0]) { |acc, p| acc << (acc.last + p) }
-
-      size.times.map do
-        r = @random.rand
-        (cumulative_probs.index { |cp| r < cp } || (cumulative_probs.size - 1)) - 1
+    def random_choice(probabilities)
+      cumulative = 0.0
+      value = @random.rand
+      probabilities.each_with_index do |probability, index|
+        cumulative += probability
+        return index if value < cumulative
       end
+      probabilities.size - 1
     end
   end
 end

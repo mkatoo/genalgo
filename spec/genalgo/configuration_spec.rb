@@ -2,64 +2,62 @@
 
 RSpec.describe Genalgo::Configuration do
   let(:bounds) { Genalgo::Bounds.new(lower: [-1.0, 10.0], upper: [1.0, 20.0]) }
-  let(:params) do
-    { n_pop: 4, n_eval: 8, bounds: bounds, evaluation_function: ->(x) { x.sum { |gene| gene * gene } }, seed: 123 }
-  end
+  let(:params) { { population_size: 4, max_evaluations: 8, bounds: bounds, seed: 123 } }
 
-  it "uses one immutable Bounds object and derives its dimension" do
-    configuration = described_class.new(params)
+  it "validates and freezes settings with an immutable default crossover" do
+    configuration = described_class.new(**params)
 
     expect(configuration).to be_frozen
+    expect(configuration.crossover).to be_a(Genalgo::Crossovers::BlxAlpha)
+    expect(configuration.crossover).to be_frozen
     expect(configuration.bounds).to be(bounds)
-    expect(configuration.n_dim).to eq(2)
-    expect(configuration.to_h).not_to have_key(:n_dim)
   end
 
-  it "copies settings while sharing immutable bounds and the supplied callable" do
-    configuration = described_class.new(params)
-    params[:n_pop] = 100
-    configuration.to_h[:bounds] = nil
+  it "creates independent settings while preserving the seed and unchanged immutable values" do
+    original = described_class.new(**params.except(:seed))
+    changed = original.with(max_evaluations: 20)
+    changed.to_h[:population_size] = 100
 
-    expect(configuration.n_pop).to eq(4)
-    expect(configuration.bounds).to be(bounds)
-    expect(configuration.evaluation_function).to be(params[:evaluation_function])
-  end
-
-  it "reports missing settings before execution" do
-    expect { described_class.new(n_pop: 4) }.to raise_error(Genalgo::ConfigurationError) do |error|
-      expect(error.context[:missing_parameters]).to contain_exactly(:n_eval, :bounds, :evaluation_function)
-    end
+    expect(changed).to be_frozen
+    expect(changed.seed).to eq(original.seed)
+    expect(changed.bounds).to be(original.bounds)
+    expect(changed.crossover).to be(original.crossover)
+    expect(original.max_evaluations).to eq(8)
+    expect(changed.max_evaluations).to eq(20)
+    expect(changed.population_size).to eq(4)
+    expect(original.with(seed: nil).seed).to be_a(Integer)
+    expect(original.with(seed: 0).seed).to eq(0)
   end
 
   {
-    "non-integer population size" => { n_pop: 4.5 },
-    "zero population size" => { n_pop: 0 },
-    "insufficient BLX-alpha parents" => { n_pop: 1 },
-    "insufficient Simplex parents" => { crossover: :simplex, n_pop: 2 },
-    "non-integer budget" => { n_eval: 8.5 },
-    "zero budget" => { n_eval: 0 },
-    "insufficient budget" => { n_eval: 3 },
-    "unknown crossover" => { crossover: :unknown },
-    "false crossover" => { crossover: false },
-    "non-integer seed" => { seed: "123" },
+    "non-integer population" => { population_size: 4.5 },
+    "zero population" => { population_size: 0 },
+    "negative population" => { population_size: -1 },
+    "too few BLX-alpha parents" => { population_size: 1 },
+    "too few Simplex parents" => { crossover: Genalgo::Crossovers::Simplex.new, population_size: 2 },
+    "non-integer budget" => { max_evaluations: 8.5 },
+    "zero budget" => { max_evaluations: 0 },
+    "insufficient budget" => { max_evaluations: 3 },
+    "invalid bounds" => { bounds: {} },
+    "invalid seed" => { seed: "123" },
     "false seed" => { seed: false },
-    "non-callable evaluator" => { evaluation_function: 1.0 },
-    "bounds hash" => { bounds: { lower: [-1.0], upper: [1.0] } },
-    "independently specified dimension" => { n_dim: 2 },
-    "unknown setting" => { typo: 123 }
-  }.each do |description, invalid_params|
-    it "rejects #{description}" do
-      expect { described_class.new(params.merge(invalid_params)) }.to raise_error(Genalgo::ConfigurationError)
+    "symbol crossover" => { crossover: :simplex },
+    "mutable crossover" => { crossover: Genalgo::Crossovers::Simplex.new.dup }
+  }.each do |description, changes|
+    it "rejects #{description} when constructed" do
+      expect { described_class.new(**params, **changes) }.to raise_error(Genalgo::ConfigurationError)
     end
   end
 
-  it "allows a budget covering only the initial population" do
-    expect(described_class.new(params.merge(n_eval: 4)).n_eval).to eq(4)
+  it "rejects missing and unknown keywords" do
+    expect { described_class.new(population_size: 4) }.to raise_error(ArgumentError)
+    expect { described_class.new(**params, typo: true) }.to raise_error(ArgumentError)
   end
 
-  it "accepts the minimum Simplex population derived from bounds" do
-    configuration = described_class.new(params.merge(crossover: :simplex, n_pop: 3))
+  it "accepts the minimum Simplex population and an initialization-only budget" do
+    configuration = described_class.new(**params, population_size: 3, max_evaluations: 3,
+                                                  crossover: Genalgo::Crossovers::Simplex.new)
 
-    expect(configuration.n_pop).to eq(configuration.bounds.n_dim + 1)
+    expect(configuration.population_size).to eq(configuration.bounds.dimension + 1)
   end
 end

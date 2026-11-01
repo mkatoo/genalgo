@@ -1,37 +1,37 @@
 # frozen_string_literal: true
 
-require_relative "blx_alpha_crossover"
-require_relative "simplex_crossover"
-require_relative "blx_alpha_generation_strategy"
-require_relative "simplex_generation_strategy"
+require_relative "elite_roulette_selection"
 
 module Genalgo
-  # Minimal Generation Gap (MGG) for one execution's validated configuration.
+  # One MGG update replaces two parents using their family of two parents and two children.
   class MGG
-    def initialize(configuration, random:)
-      @generation_strategy = create_generation_strategy(configuration, random: random)
+    CHILDREN_PER_STEP = 2
+
+    def initialize(configuration, evaluator:, random:)
+      @bounds = configuration.bounds
+      @crossover = configuration.crossover
+      @parent_count = @crossover.parent_count(@bounds.dimension)
+      @evaluator = evaluator
+      @random = random
+      @selection = EliteRouletteSelection.new(random: random)
     end
 
-    def next_generation(population)
-      @generation_strategy.next_generation(population)
-    end
+    def step(population)
+      raise EvaluationError, "MGG requires a budget for two children" if @evaluator.remaining < CHILDREN_PER_STEP
 
-    def evaluations_per_generation
-      @generation_strategy.evaluations_per_generation
+      indices = population.sample_indices(@parent_count, random: @random)
+      chromosomes = indices.map { |index| population[index].chromosome }
+      children = evaluate_children(chromosomes)
+      replaced = indices.size == 2 ? indices : indices.sample(2, random: @random)
+      family = replaced.map { |index| population[index] } + children
+      population.replace(replaced, @selection.select(family, 2))
     end
 
     private
 
-    def create_generation_strategy(configuration, random:)
-      case configuration.crossover
-      when :blx_alpha
-        BlxAlphaGenerationStrategy.new(configuration, crossover: BlxAlphaCrossover.new(random: random), random: random)
-      when :simplex
-        SimplexGenerationStrategy.new(
-          configuration, crossover: SimplexCrossover.new(random: random), random: random
-        )
-      else
-        raise StrategyError, "Unknown crossover type: #{configuration.crossover}"
+    def evaluate_children(chromosomes)
+      Array.new(CHILDREN_PER_STEP) do
+        @evaluator.evaluate(@crossover.call(chromosomes, bounds: @bounds, random: @random))
       end
     end
   end

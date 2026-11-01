@@ -5,7 +5,7 @@ RSpec.describe Genalgo::Bounds do
   subject(:bounds) { described_class.new(**params) }
 
   it "derives its dimension from independent coordinate intervals" do
-    expect(bounds.n_dim).to eq(3)
+    expect(bounds.dimension).to eq(3)
     expect(bounds.within_bounds?([0.0, 15.0, 3.0])).to be(true)
     expect(bounds.within_bounds?([0.0, 5.0, 3.0])).to be(false)
   end
@@ -25,7 +25,7 @@ RSpec.describe Genalgo::Bounds do
   it "samples each coordinate from its interval, including fixed coordinates" do
     random = Random.new(123)
     20.times do
-      chromosome = bounds.random_chromosome(random: random)
+      chromosome = bounds.sample(random: random)
       expect(chromosome[0]).to be_between(-1.0, 1.0)
       expect(chromosome[1]).to be_between(10.0, 20.0)
       expect(chromosome[2]).to eq(3.0)
@@ -35,8 +35,15 @@ RSpec.describe Genalgo::Bounds do
   it "clamps each coordinate without modifying the input" do
     chromosome = [-2.0, 30.0, 99.0]
 
-    expect(bounds.clamp_chromosome(chromosome)).to eq([-1.0, 20.0, 3.0])
+    expect(bounds.clamp(chromosome)).to eq([-1.0, 20.0, 3.0])
     expect(chromosome).to eq([-2.0, 30.0, 99.0])
+  end
+
+  it "samples finite coordinates even when the interval width would overflow" do
+    wide = described_class.new(lower: [-1e308], upper: [1e308])
+    random = Random.new(123)
+
+    expect(Array.new(20) { wide.sample(random: random) }).to all(satisfy { |genes| wide.within_bounds?(genes) })
   end
 
   {
@@ -49,6 +56,7 @@ RSpec.describe Genalgo::Bounds do
     "NaN coordinate" => { upper: [1.0, Float::NAN, 3.0] },
     "infinite coordinate" => { lower: [-Float::INFINITY, 10.0, 3.0] },
     "complex coordinate" => { upper: [1.0, Complex(20, 1), 3.0] },
+    "unrepresentable float coordinate" => { upper: [1.0, 10**400, 3.0] },
     "reversed interval" => { lower: [-1.0, 21.0, 3.0] }
   }.each do |description, invalid_params|
     it "rejects #{description}" do
@@ -59,7 +67,7 @@ RSpec.describe Genalgo::Bounds do
   [nil, "abc", [0.0], [0.0, 15.0, 3.0, 4.0], [0.0, nil, 3.0], [0.0, Float::NAN, 3.0]].each do |chromosome|
     it "rejects a malformed chromosome #{chromosome.inspect}" do
       expect(bounds.within_bounds?(chromosome)).to be(false)
-      expect { bounds.clamp_chromosome(chromosome) }.to raise_error(ArgumentError)
+      expect { bounds.clamp(chromosome) }.to raise_error(ArgumentError)
     end
   end
 end

@@ -1,87 +1,67 @@
 # frozen_string_literal: true
 
 require_relative "bounds"
+require_relative "crossovers/blx_alpha"
+require_relative "crossovers/simplex"
 
 module Genalgo
-  # Validated, immutable settings for a single execution.
+  # Immutable settings, reusable across independent runs.
   class Configuration
-    PARAMETERS = %i[n_pop n_eval bounds crossover seed evaluation_function].freeze
-    REQUIRED_PARAMETERS = %i[n_pop n_eval bounds evaluation_function].freeze
-    DEFAULT_VALUES = { crossover: :blx_alpha, seed: -> { Random.new_seed } }.freeze
-    CROSSOVERS = %i[blx_alpha simplex].freeze
+    attr_reader :bounds, :population_size, :max_evaluations, :crossover, :seed
 
-    PARAMETERS.each do |name|
-      define_method(name) { @params[name] }
-    end
-
-    def initialize(params = {})
-      @params = params.to_h.dup
-      validate_known_parameters!
-      apply_defaults!
-      validate_required_parameters!
-      validate_parameters!
-      @params.freeze
+    def initialize(bounds:, population_size:, max_evaluations:, crossover: Crossovers::BlxAlpha.new, seed: nil)
+      @bounds = bounds
+      @population_size = population_size
+      @max_evaluations = max_evaluations
+      @crossover = crossover
+      @seed = seed.nil? ? Random.new_seed : seed
+      validate!
       freeze
     end
 
-    def n_dim
-      bounds.n_dim
+    def with(**changes)
+      self.class.new(**to_h, **changes)
     end
 
     def to_h
-      @params.dup
+      { bounds: bounds, population_size: population_size, max_evaluations: max_evaluations,
+        crossover: crossover, seed: seed }
     end
 
     private
 
-    def apply_defaults!
-      @params[:crossover] = DEFAULT_VALUES[:crossover] if crossover.nil?
-      @params[:seed] = DEFAULT_VALUES[:seed].call if seed.nil?
+    def validate!
+      raise ConfigurationError, "Bounds must be a Genalgo::Bounds instance" unless bounds.is_a?(Bounds)
+      raise ConfigurationError, "Seed must be an integer" unless seed.is_a?(Integer)
+
+      validate_sizes!
+      validate_crossover!
+      validate_parent_count!
     end
 
-    def validate_known_parameters!
-      unknown = @params.keys - PARAMETERS
-      validate!(unknown.empty?, "Unknown parameters: #{unknown.join(", ")}", unknown_parameters: unknown)
-    end
+    def validate_sizes!
+      { population_size: population_size, max_evaluations: max_evaluations }.each do |name, value|
+        next if value.is_a?(Integer) && value.positive?
 
-    def validate_required_parameters!
-      missing = REQUIRED_PARAMETERS.select { |name| @params[name].nil? }
-      validate!(missing.empty?, "Missing required parameters: #{missing.join(", ")}", missing_parameters: missing)
-    end
-
-    def validate_parameters!
-      validate_positive_integers!
-      validate_interfaces!
-      validate_population_size!
-      validate!(n_eval >= n_pop, "Evaluation budget (#{n_eval}) must cover the initial population (#{n_pop})",
-                n_eval: n_eval, n_pop: n_pop)
-    end
-
-    def validate_positive_integers!
-      %i[n_pop n_eval].each do |name|
-        value = @params[name]
-        validate!(value.is_a?(Integer) && value.positive?, "#{name} must be a positive integer, got #{value.inspect}",
-                  parameter: name, value: value, minimum_value: 1)
+        raise ConfigurationError.new("#{name} must be a positive integer", context: { parameter: name, value: value })
       end
+      return if max_evaluations >= population_size
+
+      raise ConfigurationError, "Evaluation budget must cover the initial population"
     end
 
-    def validate_interfaces!
-      validate!(bounds.is_a?(Bounds), "Bounds must be a Genalgo::Bounds instance", parameter: :bounds)
-      validate!(seed.is_a?(Integer), "Seed must be an integer", parameter: :seed, value: seed)
-      validate!(evaluation_function.respond_to?(:call), "Evaluation function must be callable",
-                parameter: :evaluation_function)
-      validate!(CROSSOVERS.include?(crossover), "Unknown crossover type: #{crossover}", crossover: crossover)
+    def validate_crossover!
+      return if crossover.respond_to?(:call) && crossover.respond_to?(:parent_count) && crossover.frozen?
+
+      raise ConfigurationError, "Crossover must be immutable and implement call and parent_count"
     end
 
-    def validate_population_size!
-      minimum_population = crossover == :simplex ? n_dim + 1 : 2
-      validate!(n_pop >= minimum_population,
-                "#{crossover} crossover requires population size >= #{minimum_population}, got #{n_pop}",
-                crossover: crossover, n_dim: n_dim, n_pop: n_pop, minimum_population: minimum_population)
-    end
+    def validate_parent_count!
+      count = crossover.parent_count(bounds.dimension)
+      return if count.is_a?(Integer) && count.between?(2, population_size)
 
-    def validate!(valid, message, **context)
-      raise ConfigurationError.new(message, context: context) unless valid
+      raise ConfigurationError.new("Population must cover the crossover's parent count",
+                                   context: { population_size: population_size, parent_count: count })
     end
   end
 end

@@ -3,33 +3,20 @@
 require_relative "bounds"
 
 module Genalgo
-  # A chromosome and its fitness within shared, immutable bounds.
+  # An immutable, evaluated chromosome within shared bounds.
   class Individual
-    attr_accessor :fitness
-    attr_reader :chromosome, :bounds
+    attr_reader :chromosome, :fitness, :bounds
 
-    def initialize(bounds:, chromosome:)
+    def initialize(bounds:, chromosome:, fitness:)
+      unless fitness.is_a?(Numeric) && fitness.real? && fitness.finite? && fitness.abs <= Float::MAX
+        raise ArgumentError, "Fitness must be a finite real number representable as a Float"
+      end
+      raise ArgumentError, "Chromosome must be within bounds" unless bounds.within_bounds?(chromosome)
+
       @bounds = bounds
-      self.chromosome = chromosome
-    end
-
-    def chromosome=(chromosome)
-      @chromosome = @bounds.clamp_chromosome(chromosome)
-    end
-
-    def within_bounds?
-      @bounds.within_bounds?(@chromosome)
-    end
-
-    def n_dim
-      @bounds.n_dim
-    end
-
-    private
-
-    def initialize_copy(other)
-      super
-      @chromosome = other.chromosome.dup
+      @chromosome = chromosome.map(&:to_f).freeze
+      @fitness = fitness.to_f
+      freeze
     end
   end
 end

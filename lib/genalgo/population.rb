@@ -3,70 +3,76 @@
 require_relative "individual"
 
 module Genalgo
-  # Population of individuals sharing validated bounds.
+  # Internal mutable slots containing immutable evaluated individuals.
   class Population
     include Enumerable
 
-    def initialize(n_pop:, bounds:, random: Random.new)
-      @n_pop = n_pop
-      @bounds = bounds
-      validate_parameters!
-      initialize_population(random: random)
-    end
+    attr_reader :best_individual
 
-    # @param individuals [Array<Genalgo::Individual>]
-    def add(individuals)
-      @population.concat(individuals)
-    end
+    def initialize(individuals)
+      unless individuals.is_a?(Array) && !individuals.empty? && individuals.first.is_a?(Individual)
+        raise PopulationError, "Population requires a non-empty array of evaluated individuals"
+      end
 
-    # Randomly remove and return the requested number of individuals.
-    def pop(size, random:)
-      delete sample(size, random: random)
-    end
-
-    def sample(size, random:)
-      @population.sample(size, random: random)
-    end
-
-    def delete(individuals)
-      individuals.each { @population.delete(_1) }
-      individuals
-    end
-
-    def best_individual
-      @population.min_by(&:fitness)
-    end
-
-    def validate_parameters!
-      return if @n_pop.is_a?(Integer) && @n_pop.positive?
-
-      message = if @n_pop.is_a?(Integer)
-                  "Population size (n_pop) must be at least 1, got #{@n_pop}"
-                else
-                  "Population size (n_pop) must be an integer, got #{@n_pop.class}"
-                end
-      raise Genalgo::PopulationError.new(message, context: { n_pop: @n_pop, minimum_value: 1 })
+      @bounds = individuals.first.bounds
+      validate_individuals!(individuals)
+      @individuals = individuals.dup
+      @indices = (0...size).to_a.freeze
+      @best_individual = @individuals.min_by(&:fitness)
     end
 
     def each(&block)
-      @population.each(&block)
+      @individuals.each(&block)
     end
 
     def size
-      @population.size
+      @individuals.size
+    end
+
+    def [](index)
+      @individuals.fetch(index)
+    end
+
+    def sample_indices(count, random:)
+      unless count.is_a?(Integer) && count.between?(1, size)
+        raise PopulationError, "Sample size must be an integer between 1 and #{size}"
+      end
+
+      @indices.sample(count, random: random)
+    end
+
+    def replace(indices, individuals)
+      validate_replacement!(indices, individuals)
+      removed_best = indices.any? { |index| self[index].equal?(best_individual) }
+      indices.zip(individuals).each { |index, individual| @individuals[index] = individual }
+      update_best(individuals, removed_best: removed_best)
+      self
     end
 
     private
 
-    def initialize_population(random:)
-      @population = Array.new(@n_pop) do
-        Individual.new(bounds: @bounds, chromosome: @bounds.random_chromosome(random: random))
-      end
+    def update_best(individuals, removed_best:)
+      @best_individual = if removed_best && !individuals.include?(best_individual)
+                           @individuals.min_by(&:fitness)
+                         else
+                           [best_individual, *individuals].min_by(&:fitness)
+                         end
     end
 
-    def initialize_copy(other)
-      super
-      @population = other.map(&:dup)
+    def validate_individuals!(individuals)
+      return if individuals.all? do |individual|
+        individual.is_a?(Individual) && individual.frozen? && individual.bounds.equal?(@bounds)
+      end
+
+      raise PopulationError, "Population requires evaluated individuals sharing one Bounds object"
+    end
+
+    def validate_replacement!(indices, individuals)
+      valid = indices.size == individuals.size && indices.uniq.size == indices.size
+      valid &&= indices.all? { |index| index.is_a?(Integer) && index.between?(0, size - 1) }
+      raise PopulationError, "Replacement requires distinct valid slots and equally many individuals" unless valid
+
+      validate_individuals!(individuals)
     end
   end
 end

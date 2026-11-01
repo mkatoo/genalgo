@@ -10,12 +10,12 @@ module Genalgo
     def initialize(lower:, upper:)
       validate_arrays!(lower, upper)
       lower.zip(upper).each_with_index { |(low, high), index| validate_interval!(low, high, index) }
-      @lower = lower.dup.freeze
-      @upper = upper.dup.freeze
+      @lower = lower.map(&:to_f).freeze
+      @upper = upper.map(&:to_f).freeze
       freeze
     end
 
-    def n_dim
+    def dimension
       @lower.size
     end
 
@@ -25,16 +25,19 @@ module Genalgo
       chromosome.each_with_index.all? { |gene, index| gene.between?(@lower[index], @upper[index]) }
     end
 
-    def clamp_chromosome(chromosome)
+    def clamp(chromosome)
       unless valid_chromosome?(chromosome)
-        raise ArgumentError, "Chromosome must contain #{n_dim} finite real coordinates"
+        raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
       end
 
-      chromosome.each_with_index.map { |gene, index| gene.clamp(@lower[index], @upper[index]) }
+      chromosome.each_with_index.map { |gene, index| gene.to_f.clamp(@lower[index], @upper[index]) }
     end
 
-    def random_chromosome(random:)
-      @lower.zip(@upper).map { |low, high| (random.rand * (high - low)) + low }
+    def sample(random:)
+      @lower.zip(@upper).map do |low, high|
+        fraction = random.rand
+        low == high ? low : (low * (1.0 - fraction)) + (high * fraction)
+      end
     end
 
     private
@@ -56,11 +59,11 @@ module Genalgo
     end
 
     def finite_real?(value)
-      value.is_a?(Numeric) && value.real? && value.finite?
+      value.is_a?(Numeric) && value.real? && value.finite? && value.abs <= Float::MAX
     end
 
     def valid_chromosome?(chromosome)
-      chromosome.is_a?(Array) && chromosome.size == n_dim && chromosome.all? { |gene| finite_real?(gene) }
+      chromosome.is_a?(Array) && chromosome.size == dimension && chromosome.all? { |gene| finite_real?(gene) }
     end
   end
 end

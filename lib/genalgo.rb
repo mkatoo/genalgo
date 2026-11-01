@@ -3,5 +3,4 @@
 require_relative "genalgo/version"
 require_relative "genalgo/errors"
 require_relative "genalgo/configuration"
-require_relative "genalgo/mutable_configuration"
-require_relative "genalgo/executor"
+require_relative "genalgo/optimizer"
