@@ -36,9 +36,7 @@ module Genalgo
     private
 
     def validate_selection!(individuals, size)
-      unless individuals.all? { |individual| individual.is_a?(Individual) }
-        raise StrategyError, "Selection requires evaluated individuals"
-      end
+      raise StrategyError, "Selection requires evaluated individuals" unless individuals.all?(Individual)
       return if size.is_a?(Integer) && size.between?(0, individuals.size)
 
       raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
