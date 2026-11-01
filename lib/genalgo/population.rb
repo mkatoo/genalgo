@@ -21,8 +21,8 @@ module Genalgo
       @best_individual = @individuals.min_by(&:fitness)
     end
 
-    def each(&block)
-      @individuals.each(&block)
+    def each(&)
+      @individuals.each(&)
     end
 
     def size

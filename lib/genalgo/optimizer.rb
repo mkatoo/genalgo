@@ -18,10 +18,10 @@ module Genalgo
       freeze
     end
 
-    def run(&objective)
+    def run(&)
       random = Random.new(configuration.seed)
       evaluator = Evaluator.new(bounds: configuration.bounds,
-                                max_evaluations: configuration.max_evaluations, &objective)
+                                max_evaluations: configuration.max_evaluations, &)
       population = initialize_population(evaluator, random)
       history = [snapshot(population, evaluator)]
       generation = MGG.new(configuration, evaluator: evaluator, random: random)
