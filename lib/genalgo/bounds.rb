@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "errors"
+require_relative "numeric_validation"
 
 module Genalgo
   # Immutable coordinate intervals shared by every individual in a population.
@@ -49,7 +50,7 @@ module Genalgo
     end
 
     def validate_interval!(lower, upper, index)
-      unless finite_real?(lower) && finite_real?(upper)
+      unless NumericValidation.finite_real?(lower) && NumericValidation.finite_real?(upper)
         raise ConfigurationError.new("Bounds must be finite real numbers", context: { dimension: index })
       end
       return if lower <= upper
@@ -58,14 +59,10 @@ module Genalgo
                                    context: { dimension: index, lower: lower, upper: upper })
     end
 
-    def finite_real?(value)
-      return value.finite? if value.is_a?(Float)
-
-      value.is_a?(Numeric) && value.real? && value.finite? && value.abs <= Float::MAX
-    end
-
     def valid_chromosome?(chromosome)
-      chromosome.is_a?(Array) && chromosome.size == dimension && chromosome.all? { |gene| finite_real?(gene) }
+      chromosome.is_a?(Array) && chromosome.size == dimension && chromosome.all? do |gene|
+        NumericValidation.finite_real?(gene)
+      end
     end
   end
 end

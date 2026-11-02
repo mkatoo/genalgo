@@ -2,6 +2,7 @@
 
 require_relative "errors"
 require_relative "individual"
+require_relative "numeric_validation"
 
 module Genalgo
   # Implements elite strategy combined with roulette wheel selection.
@@ -10,8 +11,7 @@ module Genalgo
     DEFAULT_SCALING_FACTOR = 0.5
 
     def initialize(random:, scaling_factor: DEFAULT_SCALING_FACTOR)
-      unless scaling_factor.is_a?(Numeric) && scaling_factor.real? && scaling_factor.finite? &&
-             scaling_factor.abs <= Float::MAX && scaling_factor.to_f.positive?
+      unless NumericValidation.finite_real?(scaling_factor) && scaling_factor.to_f.positive?
         raise ConfigurationError, "Scaling factor must be a finite positive real number"
       end
 

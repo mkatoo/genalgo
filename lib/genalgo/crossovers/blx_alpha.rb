@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../errors"
+require_relative "../numeric_validation"
 
 module Genalgo
   module Crossovers
@@ -9,7 +10,7 @@ module Genalgo
       attr_reader :alpha
 
       def initialize(alpha: 0.36)
-        unless alpha.is_a?(Numeric) && alpha.real? && alpha.finite? && alpha.between?(0, Float::MAX)
+        unless NumericValidation.finite_real?(alpha) && alpha >= 0
           raise ConfigurationError, "Alpha must be a finite non-negative real number"
         end
 

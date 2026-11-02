@@ -246,7 +246,7 @@ RSpec.describe Genalgo::EliteRouletteSelection do
       end
     end
 
-    [0, -0.1, Float::NAN, Float::INFINITY, Complex(1, 1), nil].each do |factor|
+    [0, -0.1, Float::NAN, Float::INFINITY, Complex(1, 1), nil, Rational(1, 10**400)].each do |factor|
       it "rejects an invalid scaling factor #{factor.inspect}" do
         expect { described_class.new(random: random, scaling_factor: factor) }
           .to raise_error(Genalgo::ConfigurationError)
