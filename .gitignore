@@ -6,6 +6,8 @@
 /pkg/
 /spec/reports/
 /tmp/
+/vendor/bundle/
+/.ruby-version
 
 # RSpec generated files
 /spec/examples.txt
