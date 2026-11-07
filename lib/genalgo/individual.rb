@@ -15,9 +15,17 @@ module Genalgo
       raise ArgumentError, "Chromosome must be within bounds" unless bounds.within_bounds?(chromosome)
 
       @bounds = bounds
-      @chromosome = chromosome.map(&:to_f).freeze
+      @chromosome = immutable_chromosome(chromosome)
       @fitness = fitness.to_f
       freeze
+    end
+
+    private
+
+    def immutable_chromosome(chromosome)
+      return chromosome if chromosome.frozen? && chromosome.all?(Float)
+
+      chromosome.map(&:to_f).freeze
     end
   end
 end

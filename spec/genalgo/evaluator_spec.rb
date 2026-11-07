@@ -17,6 +17,7 @@ RSpec.describe Genalgo::Evaluator do
     expect(seen).not_to be(source)
     expect(source).to eq([-2, 30])
     expect(individual.chromosome).to eq([-1.0, 20.0])
+    expect(individual.chromosome).to be(seen)
     expect(individual.fitness).to eq(19.0)
     expect(evaluator.evaluations).to eq(1)
     expect(evaluator.remaining).to eq(1)
