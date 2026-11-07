@@ -36,8 +36,8 @@ module Genalgo
     end
 
     def sample(random:)
-      @lower.zip(@upper).map do |low, high|
-        IntervalSampling.sample(low, high, random: random)
+      Array.new(dimension) do |index|
+        IntervalSampling.sample(@lower[index], @upper[index], random: random)
       end
     end
 

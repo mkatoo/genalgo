@@ -30,9 +30,7 @@ module Genalgo
       # Capture clipped intervals once, then sample independently for each child.
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)
-        intervals = parents.first.zip(parents.last, bounds.lower, bounds.upper).map do |x, y, lower, upper|
-          expanded_interval(x.to_f, y.to_f, lower, upper)
-        end
+        intervals = expanded_intervals(parents, bounds)
         ->(random:) { intervals.map { |low, high| IntervalSampling.sample(low, high, random: random) } }.freeze
       end
 
@@ -50,6 +48,13 @@ module Genalgo
         low = [low - expansion, lower].max
         high = [high + expansion, upper].min
         [low, high]
+      end
+
+      def expanded_intervals(parents, bounds)
+        first, last = parents
+        Array.new(bounds.dimension) do |index|
+          expanded_interval(first[index].to_f, last[index].to_f, bounds.lower[index], bounds.upper[index])
+        end
       end
     end
   end
