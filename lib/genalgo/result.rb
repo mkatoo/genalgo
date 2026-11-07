@@ -10,7 +10,11 @@ module Genalgo
       @population = population.to_a.dup.freeze
       @history = history.dup.freeze
       @evaluations = evaluations
-      @best_individual = @population.min_by(&:fitness)
+      @best_individual = if population.respond_to?(:best_individual)
+                           population.best_individual
+                         else
+                           @population.min_by(&:fitness)
+                         end
       freeze
     end
 

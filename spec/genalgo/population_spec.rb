@@ -51,6 +51,18 @@ RSpec.describe Genalgo::Population do
     expect(population.best_individual).to be(best)
   end
 
+  it "keeps the current best on a tie while it remains in the population" do
+    best = population.best_individual
+    tied = individual(-1)
+    population.replace([0, 1], [tied, best])
+
+    expect(population.best_individual).to be(best)
+
+    population.replace([1], [individual(9)])
+
+    expect(population.best_individual).to be(tied)
+  end
+
   [[-1], [4], [0, 0], [1.5]].each do |indices|
     it "rejects invalid replacement indices #{indices.inspect} atomically" do
       before = population.to_a

@@ -23,8 +23,9 @@ RSpec.describe Genalgo::Optimizer do
         expect(result.evaluations).to eq(calls).and eq(20)
         expect(result.history.map(&:evaluations)).to eq((6..20).step(2).to_a)
         expect(result.population.size).to eq(6)
-        expect(result.best_individual).to be(result.population.min_by(&:fitness))
-        expect(result.history.last.best_individual.fitness).to eq(result.best_individual.fitness)
+        expect(result.population).to include(result.best_individual)
+        expect(result.best_individual.fitness).to eq(result.population.map(&:fitness).min)
+        expect(result.history.last.best_individual).to be(result.best_individual)
         fitness = result.history.map { |entry| entry.best_individual.fitness }
         expect(fitness.each_cons(2).all? { |previous, current| current <= previous }).to be(true)
         (result.population + result.history.map(&:best_individual)).each do |individual|
@@ -58,6 +59,13 @@ RSpec.describe Genalgo::Optimizer do
         expect { first.history.clear }.to raise_error(FrozenError)
         expect { first.history.first.best_individual.chromosome.fill(99) }.to raise_error(FrozenError)
         expect(first.history).to all(be_frozen)
+      end
+
+      it "returns the final history's best individual even when every fitness is tied" do
+        result = described_class.new(configuration.with(seed: 0)).run { 1 }
+
+        expect(result.best_individual).to be(result.history.last.best_individual)
+        expect(result.population).to include(result.best_individual)
       end
 
       [1, 7].each do |failure_at|
