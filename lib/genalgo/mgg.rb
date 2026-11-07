@@ -30,9 +30,16 @@ module Genalgo
     private
 
     def evaluate_children(chromosomes)
+      sampler = prepare_crossover(chromosomes)
       Array.new(CHILDREN_PER_STEP) do
-        @evaluator.evaluate(@crossover.call(chromosomes, bounds: @bounds, random: @random))
+        @evaluator.evaluate(sampler.call(random: @random))
       end
+    end
+
+    def prepare_crossover(chromosomes)
+      return @crossover.prepare(chromosomes, bounds: @bounds) if @crossover.respond_to?(:prepare)
+
+      ->(random:) { @crossover.call(chromosomes, bounds: @bounds, random: random) }
     end
   end
 end

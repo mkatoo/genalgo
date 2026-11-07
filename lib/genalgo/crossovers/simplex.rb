@@ -15,13 +15,22 @@ module Genalgo
       end
 
       def call(parents, bounds:, random:)
+        prepare(parents, bounds: bounds).call(random: random)
+      end
+
+      # Capture the expanded simplex once, then sample independently for each child.
+      def prepare(parents, bounds:)
         validate_parents!(parents, bounds)
         vertices = expand(parents, bounds.dimension)
-        offset = sample_offset(vertices, bounds.dimension, random)
-        bounds.clamp(Array.new(bounds.dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] })
+        ->(random:) { sample(vertices, bounds, random) }.freeze
       end
 
       private
+
+      def sample(vertices, bounds, random)
+        offset = sample_offset(vertices, bounds.dimension, random)
+        bounds.clamp(Array.new(bounds.dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] })
+      end
 
       def validate_parents!(parents, bounds)
         return if parents.size == parent_count(bounds.dimension) && parents.all? do |parent|

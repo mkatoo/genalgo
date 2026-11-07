@@ -24,23 +24,32 @@ module Genalgo
       end
 
       def call(parents, bounds:, random:)
-        unless parents.size == parent_count(bounds.dimension) && parents.all? { |parent| bounds.within_bounds?(parent) }
-          raise StrategyError, "BLX-alpha requires two chromosomes within the same bounds"
-        end
+        prepare(parents, bounds: bounds).call(random: random)
+      end
 
-        parents.first.zip(parents.last, bounds.lower, bounds.upper).map do |x, y, lower, upper|
-          blend(x.to_f, y.to_f, lower, upper, random)
+      # Capture clipped intervals once, then sample independently for each child.
+      def prepare(parents, bounds:)
+        validate_parents!(parents, bounds)
+        intervals = parents.first.zip(parents.last, bounds.lower, bounds.upper).map do |x, y, lower, upper|
+          expanded_interval(x.to_f, y.to_f, lower, upper)
         end
+        ->(random:) { intervals.map { |low, high| IntervalSampling.sample(low, high, random: random) } }.freeze
       end
 
       private
 
-      def blend(gene_x, gene_y, lower, upper, random)
+      def validate_parents!(parents, bounds)
+        unless parents.size == parent_count(bounds.dimension) && parents.all? { |parent| bounds.within_bounds?(parent) }
+          raise StrategyError, "BLX-alpha requires two chromosomes within the same bounds"
+        end
+      end
+
+      def expanded_interval(gene_x, gene_y, lower, upper)
         low, high = [gene_x, gene_y].minmax
         expansion = alpha.zero? ? 0.0 : alpha * (high - low)
         low = [low - expansion, lower].max
         high = [high + expansion, upper].min
-        IntervalSampling.sample(low, high, random: random)
+        [low, high]
       end
     end
   end
