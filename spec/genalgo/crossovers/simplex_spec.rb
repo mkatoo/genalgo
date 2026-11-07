@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative "../../support/crossover_examples"
+
 RSpec.describe Genalgo::Crossovers::Simplex do
   let(:bounds) { Genalgo::Bounds.new(lower: [-1, 10, 3], upper: [1, 20, 3]) }
   let(:parents) { [[-1, 10, 3], [1, 10, 3], [-1, 20, 3], [1, 20, 3]] }
   let(:random) { Random.new(123) }
   subject(:crossover) { described_class.new }
+
+  it_behaves_like "a bounded immutable crossover"
 
   it "clamps expanded offspring separately for each coordinate" do
     allow(random).to receive(:rand).and_return(0.0)
@@ -31,15 +35,6 @@ RSpec.describe Genalgo::Crossovers::Simplex do
     expect(child).to match([be_within(1e-12).of(5.0 / 6), be_within(1e-12).of(4.0 / 3)])
   end
 
-  it "preserves parents and identical chromosomes" do
-    original = parents.map(&:dup)
-    crossover.call(parents, bounds: bounds, random: random).fill(999)
-
-    expect(parents).to eq(original)
-    expect(crossover.call(Array.new(4) { [0, 15, 3] }, bounds: bounds, random: random)).to eq([0.0, 15.0, 3.0])
-    expect(crossover).to be_frozen
-  end
-
   [0, 1, 3, 5].each do |count|
     it "rejects #{count} parents when the dimension requires four" do
       candidates = Array.new(count) { parents.first }
@@ -53,14 +48,5 @@ RSpec.describe Genalgo::Crossovers::Simplex do
       expect { crossover.call([invalid, *parents.drop(1)], bounds: bounds, random: random) }
         .to raise_error(Genalgo::StrategyError)
     end
-  end
-
-  it "reproduces offspring using independent generators with the same seed" do
-    first = Array.new(5) { crossover.call(parents, bounds: bounds, random: random) }
-    other_random = Random.new(123)
-    second = Array.new(5) { crossover.call(parents, bounds: bounds, random: other_random) }
-
-    expect(first).to eq(second)
-    expect(first.uniq.size).to be > 1
   end
 end

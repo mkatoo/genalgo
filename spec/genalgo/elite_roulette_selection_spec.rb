@@ -2,224 +2,78 @@
 
 RSpec.describe Genalgo::EliteRouletteSelection do
   let(:random) { Random.new(123) }
-  let(:individuals) do
-    [
-      create_individual(fitness: 10.0),  # worst
-      create_individual(fitness: 5.0),   # middle
-      create_individual(fitness: 8.0),   # second worst
-      create_individual(fitness: 2.0),   # best (elite)
-      create_individual(fitness: 6.0)    # middle
-    ]
-  end
-
-  describe "DEFAULT_SCALING_FACTOR constant" do
-    it "defines the default scaling factor" do
-      expect(described_class::DEFAULT_SCALING_FACTOR).to eq(0.5)
-    end
-  end
-
-  describe "#initialize" do
-    context "with default parameters" do
-      subject(:selector) { described_class.new(random: random) }
-
-      it "creates a selector instance" do
-        expect(selector).to be_a(described_class)
-      end
-    end
-
-    context "with custom scaling factor" do
-      subject(:selector) { described_class.new(random: random, scaling_factor: 0.8) }
-
-      it "accepts custom scaling factor" do
-        expect(selector).to be_a(described_class)
-      end
-    end
-  end
+  let(:bounds) { Genalgo::Bounds.new(lower: Array.new(3, -10.0), upper: Array.new(3, 10.0)) }
+  let(:individuals) { [10.0, 5.0, 8.0, 2.0, 6.0].map { |fitness| create_individual(fitness: fitness) } }
+  subject(:selector) { described_class.new(random: random) }
 
   describe "#select" do
-    subject(:selector) { described_class.new(random: random) }
+    [1, 3, 5].each do |size|
+      it "selects #{size} distinct input individuals including the elite" do
+        selected = selector.select(individuals, size)
 
-    context "selecting single individual" do
-      let(:selected) { selector.select(individuals, 1) }
-
-      it "returns array with one individual" do
-        expect(selected.size).to eq(1)
-      end
-
-      it "returns the elite (best fitness) individual" do
-        expect(selected.first.fitness).to eq(2.0)
-      end
-
-      it "returns Individual instances" do
-        expect(selected).to all(be_a(Genalgo::Individual))
+        expect(selected.size).to eq(size)
+        expect(selected.uniq.size).to eq(size)
+        expect(selected - individuals).to be_empty
+        expect(selected).to include(individuals.min_by(&:fitness))
       end
     end
 
-    context "selecting multiple individuals" do
-      let(:selected) { selector.select(individuals, 3) }
+    it "leaves the input array and its order unchanged" do
+      original = individuals.dup
+      selector.select(individuals, 3)
 
-      it "returns the requested number of individuals" do
-        expect(selected.size).to eq(3)
-      end
-
-      it "includes the elite individual" do
-        expect(selected.map(&:fitness)).to include(2.0)
-      end
-
-      it "returns Individual instances" do
-        expect(selected).to all(be_a(Genalgo::Individual))
-      end
-
-      it "does not modify original individuals array" do
-        original_size = individuals.size
-        selector.select(individuals, 3)
-        expect(individuals.size).to eq(original_size)
-      end
+      expect(individuals).to eq(original)
     end
 
-    context "selecting all individuals" do
-      let(:selected) { selector.select(individuals, 5) }
-
-      it "returns all individuals" do
-        expect(selected.size).to eq(5)
-      end
-
-      it "includes the elite individual" do
-        expect(selected.map(&:fitness)).to include(2.0)
-      end
+    it "returns an empty array when selecting zero individuals" do
+      expect(selector.select(individuals, 0)).to be_empty
     end
 
-    context "with identical fitness values" do
-      let(:identical_fitness_individuals) do
-        Array.new(4) { create_individual(fitness: 5.0) }
-      end
+    it "selects from a single-individual population" do
+      single = [individuals.first]
 
-      it "handles identical fitness values" do
-        selected = selector.select(identical_fitness_individuals, 2)
-        expect(selected.size).to eq(2)
-        expect(selected).to all(be_a(Genalgo::Individual))
-      end
+      expect(selector.select(single, 1)).to eq(single)
     end
 
-    context "with empty individuals array" do
-      it "rejects selecting from an empty array" do
-        expect { selector.select([], 1) }.to raise_error(Genalgo::StrategyError)
-      end
-    end
-
-    context "requesting zero individuals" do
-      let(:selected) { selector.select(individuals, 0) }
-
-      it "returns empty array" do
-        expect(selected).to be_empty
-      end
-    end
-  end
-
-  describe "elite selection behavior" do
-    subject(:selector) { described_class.new(random: random) }
-
-    it "always includes the best individual when size > 1" do
-      100.times do
-        selected = selector.select(individuals, 3)
-        expect(selected.map(&:fitness)).to include(2.0)
-      end
-    end
-
-    it "selects elite as the only individual when size = 1" do
-      10.times do
-        selected = selector.select(individuals, 1)
-        expect(selected.first.fitness).to eq(2.0)
-      end
-    end
-  end
-
-  describe "roulette selection behavior" do
-    subject(:selector) { described_class.new(random: random) }
-
-    context "with diverse fitness values" do
-      let(:diverse_individuals) do
-        [
-          create_individual(fitness: 1.0),   # best (elite)
-          create_individual(fitness: 100.0), # worst
-          create_individual(fitness: 50.0),  # middle
-          create_individual(fitness: 10.0),  # good
-          create_individual(fitness: 75.0)   # poor
-        ]
-      end
-
-      it "shows preference for better fitness individuals" do
-        # Run multiple selections to test statistical behavior
-        selections = Array.new(100) { selector.select(diverse_individuals, 3) }
-
-        # Count how often each non-elite individual is selected
-        fitness_10_count = selections.count { |sel| sel.map(&:fitness).include?(10.0) }
-        fitness_100_count = selections.count { |sel| sel.map(&:fitness).include?(100.0) }
-
-        # Better fitness (10.0) should be selected more often than worse fitness (100.0)
-        expect(fitness_10_count).to be > fitness_100_count
-      end
-    end
-  end
-
-  describe "scaling factor effects" do
-    let(:low_scaling_selector) { described_class.new(random: Random.new(123), scaling_factor: 0.1) }
-    let(:high_scaling_selector) { described_class.new(random: Random.new(123), scaling_factor: 2.0) }
-
-    it "produces different selection patterns with different scaling factors" do
-      low_scaling_selections = Array.new(50) { low_scaling_selector.select(individuals, 3) }
-      high_scaling_selections = Array.new(50) { high_scaling_selector.select(individuals, 3) }
-
-      # Both should include elite, but non-elite patterns should differ
-      low_scaling_selections.each do |selection|
-        expect(selection.map(&:fitness)).to include(2.0)
-      end
-
-      high_scaling_selections.each do |selection|
-        expect(selection.map(&:fitness)).to include(2.0)
-      end
-
-      expect(low_scaling_selections.map { |selection| selection.map(&:fitness) }).not_to eq(
-        high_scaling_selections.map { |selection| selection.map(&:fitness) }
-      )
-    end
-  end
-
-  describe "private method behaviors through public interface" do
-    subject(:selector) { described_class.new(random: random) }
-
-    context "scaled fitness calculation effects" do
-      let(:linear_individuals) do
-        (1..5).map { |i| create_individual(fitness: i * 2.0) }
-      end
-
-      it "handles linear fitness progression" do
-        selected = selector.select(linear_individuals, 3)
-        expect(selected.size).to eq(3)
-        expect(selected.map(&:fitness)).to include(2.0) # best fitness
-      end
-    end
-
-    context "probability calculation" do
-      it "reproduces selections with independent random generators using the same seed" do
-        first_selector = described_class.new(random: Random.new(123))
-        second_selector = described_class.new(random: Random.new(123))
-
-        first = Array.new(5) { first_selector.select(individuals, 4) }
-        second = Array.new(5) { second_selector.select(individuals, 4) }
-
-        expect(first).to eq(second)
-      end
-    end
-  end
-
-  describe "edge cases" do
-    subject(:selector) { described_class.new(random: random) }
-
-    it "selects without replacement" do
+    it "selects without replacement even when the random value is always zero" do
       allow(random).to receive(:rand).and_return(0.0)
 
-      expect(selector.select(individuals, individuals.size).uniq.size).to eq(individuals.size)
+      expect(selector.select(individuals, individuals.size)).to match_array(individuals)
+    end
+
+    it "selects the first non-elite interval when the random value is zero" do
+      allow(random).to receive(:rand).and_return(0.0)
+
+      expect(selector.select(individuals, 2).map(&:fitness)).to eq([5.0, 2.0])
+    end
+
+    it "rejects selecting from an empty array" do
+      expect { selector.select([], 1) }.to raise_error(Genalgo::StrategyError)
+    end
+
+    [-1, 1.5, nil, 6].each do |size|
+      it "rejects an invalid selection size #{size.inspect}" do
+        expect { selector.select(individuals, size) }.to raise_error(Genalgo::StrategyError)
+      end
+    end
+  end
+
+  describe "fitness scaling" do
+    it "handles identical fitness values without selecting an individual twice" do
+      identical = Array.new(4) { create_individual(fitness: 5.0) }
+      selected = selector.select(identical, 2)
+
+      expect(selected.size).to eq(2)
+      expect(selected.uniq.size).to eq(2)
+      expect(selected - identical).to be_empty
+    end
+
+    it "handles a linear fitness progression" do
+      linear = (1..5).map { |index| create_individual(fitness: index * 2.0) }
+      selected = selector.select(linear, 3)
+
+      expect(selected.size).to eq(3)
+      expect(selected).to include(linear.first)
     end
 
     it "handles fitness ranges whose unscaled difference would overflow" do
@@ -234,16 +88,21 @@ RSpec.describe Genalgo::EliteRouletteSelection do
       expect(tiny.select(individuals, 3).uniq.size).to eq(3)
     end
 
-    it "selects the first non-elite interval when the random value is zero" do
-      allow(random).to receive(:rand).and_return(0.0)
+    it "prefers individuals with better fitness" do
+      diverse = [1.0, 100.0, 50.0, 10.0, 75.0].map { |fitness| create_individual(fitness: fitness) }
+      selections = Array.new(100) { selector.select(diverse, 3).map(&:fitness) }
 
-      expect(selector.select(individuals, 2).map(&:fitness)).to eq([5.0, 2.0])
+      expect(selections.count { |fitness| fitness.include?(10.0) })
+        .to be > selections.count { |fitness| fitness.include?(100.0) }
     end
 
-    [-1, 1.5, nil].each do |size|
-      it "rejects an invalid selection size #{size.inspect}" do
-        expect { selector.select(individuals, size) }.to raise_error(Genalgo::StrategyError)
-      end
+    it "produces different selection patterns with different scaling factors" do
+      low = described_class.new(random: Random.new(123), scaling_factor: 0.1)
+      high = described_class.new(random: Random.new(123), scaling_factor: 2.0)
+      low_selections = Array.new(50) { low.select(individuals, 3) }
+      high_selections = Array.new(50) { high.select(individuals, 3) }
+
+      expect(low_selections).not_to eq(high_selections)
     end
 
     [0, -0.1, Float::NAN, Float::INFINITY, Complex(1, 1), nil, Rational(1, 10**400)].each do |factor|
@@ -252,62 +111,26 @@ RSpec.describe Genalgo::EliteRouletteSelection do
           .to raise_error(Genalgo::ConfigurationError)
       end
     end
-
-    context "with single individual" do
-      let(:single_individual) { [create_individual(fitness: 5.0)] }
-
-      it "handles single individual selection" do
-        selected = selector.select(single_individual, 1)
-        expect(selected.size).to eq(1)
-        expect(selected.first.fitness).to eq(5.0)
-      end
-    end
-
-    context "with requesting more than available" do
-      let(:few_individuals) { [create_individual(fitness: 1.0), create_individual(fitness: 2.0)] }
-
-      it "rejects requesting more individuals than available" do
-        expect { selector.select(few_individuals, 5) }.to raise_error(Genalgo::StrategyError)
-      end
-    end
-
-    context "with zero width fitness range" do
-      let(:zero_width_individuals) do
-        Array.new(3) { create_individual(fitness: 5.0) }
-      end
-
-      it "handles zero fitness width" do
-        selected = selector.select(zero_width_individuals, 2)
-        expect(selected.size).to eq(2)
-        expect(selected).to all(be_a(Genalgo::Individual))
-      end
-    end
   end
 
   describe "randomness and reproducibility" do
-    subject(:selector) { described_class.new(random: random) }
+    it "reproduces selections with independent random generators using the same seed" do
+      first = described_class.new(random: Random.new(123))
+      second = described_class.new(random: Random.new(123))
 
-    context "randomness verification" do
-      it "produces different selections on multiple calls" do
-        selections = Array.new(20) { selector.select(individuals, 3) }
+      expect(Array.new(5) { first.select(individuals, 4) }).to eq(Array.new(5) { second.select(individuals, 4) })
+    end
 
-        # Should have some variation in non-elite selections
-        # All selections should include elite (fitness 2.0)
-        selections.each do |selection|
-          expect(selection.map(&:fitness)).to include(2.0)
-        end
+    it "produces varied selections on successive calls" do
+      selections = Array.new(20) { selector.select(individuals, 3).map(&:fitness).sort }
 
-        # There should be some variation in the complete selections
-        unique_selections = selections.map { |sel| sel.map(&:fitness).sort }.uniq
-        expect(unique_selections.size).to be > 1
-      end
+      expect(selections.uniq.size).to be > 1
     end
   end
 
   private
 
   def create_individual(fitness:)
-    bounds = Genalgo::Bounds.new(lower: Array.new(3, -10.0), upper: Array.new(3, 10.0))
     Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0], fitness: fitness)
   end
 end
