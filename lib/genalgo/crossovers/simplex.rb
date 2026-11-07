@@ -45,13 +45,15 @@ module Genalgo
         offset = Array.new(dimension, 0.0)
         (1..dimension).each do |index|
           factor = random.rand**(1.0 / index)
-          previous = vertices[index - 1]
-          current = vertices[index]
-          offset = Array.new(dimension) do |coordinate|
-            factor * (previous[coordinate] - current[coordinate] + offset[coordinate])
-          end
+          update_offset!(offset, vertices[index - 1], vertices[index], factor)
         end
         offset
+      end
+
+      def update_offset!(offset, previous, current, factor)
+        offset.each_index do |coordinate|
+          offset[coordinate] = factor * (previous[coordinate] - current[coordinate] + offset[coordinate])
+        end
       end
     end
   end
