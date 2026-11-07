@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../errors"
+require_relative "../interval_sampling"
 require_relative "../numeric_validation"
 
 module Genalgo
@@ -39,8 +40,7 @@ module Genalgo
         expansion = alpha.zero? ? 0.0 : alpha * (high - low)
         low = [low - expansion, lower].max
         high = [high + expansion, upper].min
-        fraction = random.rand
-        low == high ? low : (low * (1.0 - fraction)) + (high * fraction)
+        IntervalSampling.sample(low, high, random: random)
       end
     end
   end
