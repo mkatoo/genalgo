@@ -76,6 +76,22 @@ RSpec.describe Genalgo::EliteRouletteSelection do
       expect(selected).to include(linear.first)
     end
 
+    { 0.0 => 0.0, 0.75.prev_float => 0.0, 0.75 => 1.0, 1.0.prev_float => 1.0 }.each do |value, fitness|
+      it "selects the expected weight interval for random value #{value}" do
+        candidates = [-1.0, 0.0, 1.0].map { |score| create_individual(fitness: score) }
+        allow(random).to receive(:rand).and_return(value)
+
+        expect(selector.select(candidates, 2).map(&:fitness)).to eq([fitness, -1.0])
+      end
+    end
+
+    it "rescales the remaining fitness range after selecting each individual" do
+      candidates = [0, 1, 2, 3].map { |fitness| create_individual(fitness: fitness) }
+      allow(random).to receive(:rand).and_return(0.0, 0.7)
+
+      expect(selector.select(candidates, 3).map(&:fitness)).to eq([1.0, 2.0, 0.0])
+    end
+
     it "handles fitness ranges whose unscaled difference would overflow" do
       wide = [-1e308, -1e307, 1e307, 1e308].map { |fitness| create_individual(fitness: fitness) }
 

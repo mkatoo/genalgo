@@ -42,18 +42,18 @@ module Genalgo
       raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
     end
 
-    def select_non_elite(individuals, count)
-      remaining = individuals.dup
+    def select_non_elite(sorted_individuals, count)
+      remaining = sorted_individuals.dup
       Array.new(count) do
-        probabilities = calculate_probabilities(calculate_scaled_fitness(remaining))
-        remaining.delete_at(random_choice(probabilities))
+        remaining.delete_at(weighted_index(selection_weights(remaining)))
       end
     end
 
-    def calculate_scaled_fitness(individuals)
-      normalized = normalized_fitness(individuals)
+    # Removing selected individuals preserves ascending fitness order.
+    def selection_weights(sorted_individuals)
+      normalized = normalized_fitness(sorted_individuals)
       width = normalized.last - normalized.first
-      return Array.new(individuals.size, 1.0) if width.zero?
+      return Array.new(sorted_individuals.size, 1.0) if width.zero?
 
       normalized.map { |fitness| @scaling_factor / (((fitness - normalized.first) / width) + @scaling_factor) }
     end
@@ -63,19 +63,14 @@ module Genalgo
       individuals.map { |individual| scale.zero? ? 0.0 : individual.fitness / scale }
     end
 
-    def calculate_probabilities(scaled_fitness)
-      total = scaled_fitness.sum
-      scaled_fitness.map { |fitness| fitness / total }
-    end
-
-    def random_choice(probabilities)
+    def weighted_index(weights)
       cumulative = 0.0
-      value = @random.rand
-      probabilities.each_with_index do |probability, index|
-        cumulative += probability
+      value = @random.rand * weights.sum
+      weights.each_with_index do |weight, index|
+        cumulative += weight
         return index if value < cumulative
       end
-      probabilities.size - 1
+      weights.size - 1
     end
   end
 end
