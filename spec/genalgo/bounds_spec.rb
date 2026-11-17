@@ -10,6 +10,26 @@ RSpec.describe Genalgo::Bounds do
     expect(bounds.within_bounds?([0.0, 5.0, 3.0])).to be(false)
   end
 
+  it "accepts both endpoints and mixed finite real coordinates without modifying the input" do
+    chromosome = [0, Rational(25, 2), 3.0].freeze
+
+    expect(bounds.within_bounds?(bounds.lower)).to be(true)
+    expect(bounds.within_bounds?(bounds.upper)).to be(true)
+    expect(bounds.within_bounds?(chromosome)).to be(true)
+    expect(chromosome).to eq([0, Rational(25, 2), 3.0])
+  end
+
+  it "rejects out-of-bounds and invalid values in every coordinate" do
+    bounds.dimension.times do |index|
+      [bounds.lower[index] - 1, bounds.upper[index] + 1, nil, Float::NAN, Float::INFINITY].each do |value|
+        chromosome = [0.0, 15.0, 3.0]
+        chromosome[index] = value
+
+        expect(bounds.within_bounds?(chromosome)).to be(false)
+      end
+    end
+  end
+
   it "copies and freezes the input arrays" do
     original = bounds
     params[:lower][0] = -100.0

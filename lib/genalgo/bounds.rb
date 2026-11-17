@@ -22,9 +22,16 @@ module Genalgo
     end
 
     def within_bounds?(chromosome)
-      return false unless valid_chromosome?(chromosome)
+      return false unless chromosome.is_a?(Array) && chromosome.size == dimension
 
-      chromosome.each_with_index.all? { |gene, index| gene.between?(@lower[index], @upper[index]) }
+      index = 0
+      while index < chromosome.size
+        gene = chromosome[index]
+        return false unless NumericValidation.finite_real?(gene) && gene.between?(@lower[index], @upper[index])
+
+        index += 1
+      end
+      true
     end
 
     def clamp(chromosome)
@@ -64,12 +71,6 @@ module Genalgo
 
       raise ConfigurationError.new("Lower bound exceeds upper bound",
                                    context: { dimension: index, lower: lower, upper: upper })
-    end
-
-    def valid_chromosome?(chromosome)
-      chromosome.is_a?(Array) && chromosome.size == dimension && chromosome.all? do |gene|
-        NumericValidation.finite_real?(gene)
-      end
     end
   end
 end
