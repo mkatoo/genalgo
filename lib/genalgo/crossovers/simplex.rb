@@ -21,7 +21,7 @@ module Genalgo
       # Capture the expanded simplex once, then sample independently for each child.
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)
-        vertices = expand(parents, bounds.dimension)
+        vertices = expand(parents, bounds.dimension).each(&:freeze).freeze
         ->(random:) { sample(vertices, bounds, random) }.freeze
       end
 

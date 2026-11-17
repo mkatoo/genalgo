@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "bounds"
+require_relative "bounded_chromosome"
 require_relative "numeric_validation"
 
 module Genalgo
@@ -12,7 +13,6 @@ module Genalgo
       unless NumericValidation.finite_real?(fitness)
         raise ArgumentError, "Fitness must be a finite real number representable as a Float"
       end
-      raise ArgumentError, "Chromosome must be within bounds" unless bounds.within_bounds?(chromosome)
 
       @bounds = bounds
       @chromosome = immutable_chromosome(chromosome)
@@ -23,6 +23,9 @@ module Genalgo
     private
 
     def immutable_chromosome(chromosome)
+      return chromosome.coordinates if chromosome.is_a?(BoundedChromosome) && chromosome.bounds.equal?(bounds)
+
+      raise ArgumentError, "Chromosome must be within bounds" unless bounds.within_bounds?(chromosome)
       return chromosome if chromosome.frozen? && chromosome.all?(Float)
 
       chromosome.map(&:to_f).freeze

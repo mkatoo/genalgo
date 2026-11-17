@@ -6,6 +6,12 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   let(:individuals) { [10.0, 5.0, 8.0, 2.0, 6.0].map { |fitness| create_individual(fitness: fitness) } }
   subject(:selector) { described_class.new(random: random) }
 
+  it "uses the default scaling factor when omitted" do
+    explicit = described_class.new(random: Random.new(123), scaling_factor: described_class::DEFAULT_SCALING_FACTOR)
+
+    expect(selector.select(individuals, 3)).to eq(explicit.select(individuals, 3))
+  end
+
   describe "#select" do
     [1, 3, 5].each do |size|
       it "selects #{size} distinct input individuals including the elite" do
@@ -20,13 +26,17 @@ RSpec.describe Genalgo::EliteRouletteSelection do
 
     it "leaves the input array and its order unchanged" do
       original = individuals.dup
-      selector.select(individuals, 3)
+      selector.select(individuals.freeze, 3)
 
       expect(individuals).to eq(original)
     end
 
     it "returns an empty array when selecting zero individuals" do
       expect(selector.select(individuals, 0)).to be_empty
+    end
+
+    it "accepts an empty input when selecting zero individuals" do
+      expect(selector.select([], 0)).to eq([])
     end
 
     it "selects from a single-individual population" do
@@ -51,6 +61,10 @@ RSpec.describe Genalgo::EliteRouletteSelection do
       expect { selector.select([], 1) }.to raise_error(Genalgo::StrategyError)
     end
 
+    it "rejects inputs containing unevaluated individuals" do
+      expect { selector.select([individuals.first, nil], 1) }.to raise_error(Genalgo::StrategyError)
+    end
+
     [-1, 1.5, nil, 6].each do |size|
       it "rejects an invalid selection size #{size.inspect}" do
         expect { selector.select(individuals, size) }.to raise_error(Genalgo::StrategyError)
@@ -59,13 +73,12 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   end
 
   describe "fitness scaling" do
-    it "handles identical fitness values without selecting an individual twice" do
-      identical = Array.new(4) { create_individual(fitness: 5.0) }
-      selected = selector.select(identical, 2)
+    [0.0, 5.0, -5.0].each do |fitness|
+      it "handles identical fitness values of #{fitness} without selecting an individual twice" do
+        identical = Array.new(4) { create_individual(fitness: fitness) }
 
-      expect(selected.size).to eq(2)
-      expect(selected.uniq.size).to eq(2)
-      expect(selected - identical).to be_empty
+        expect(selector.select(identical, identical.size)).to match_array(identical)
+      end
     end
 
     it "handles a linear fitness progression" do
@@ -119,6 +132,16 @@ RSpec.describe Genalgo::EliteRouletteSelection do
       high_selections = Array.new(50) { high.select(individuals, 3) }
 
       expect(low_selections).not_to eq(high_selections)
+    end
+
+    it "changes selection pressure with the scaling factor" do
+      candidates = [0, 1, 2].map { |fitness| create_individual(fitness: fitness) }
+      allow(random).to receive(:rand).and_return(0.7)
+      low = described_class.new(random: random, scaling_factor: 0.1)
+      high = described_class.new(random: random, scaling_factor: 2.0)
+
+      expect(low.select(candidates, 2).map(&:fitness)).to eq([1.0, 0.0])
+      expect(high.select(candidates, 2).map(&:fitness)).to eq([2.0, 0.0])
     end
 
     [0, -0.1, Float::NAN, Float::INFINITY, Complex(1, 1), nil, Rational(1, 10**400)].each do |factor|

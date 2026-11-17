@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "individual"
+require_relative "bounded_chromosome"
 
 module Genalgo
   # The only boundary that invokes the objective and counts attempted evaluations.
@@ -23,7 +24,7 @@ module Genalgo
     def evaluate(chromosome)
       raise EvaluationError, "Evaluation budget exhausted" unless remaining.positive?
 
-      chromosome = @bounds.clamp(chromosome).freeze
+      chromosome = BoundedChromosome.new(bounds: @bounds, chromosome: chromosome)
       @evaluations += 1
       evaluate_objective(chromosome)
     end
@@ -31,11 +32,11 @@ module Genalgo
     private
 
     def evaluate_objective(chromosome)
-      fitness = @objective.call(chromosome)
+      fitness = @objective.call(chromosome.coordinates)
       Individual.new(bounds: @bounds, chromosome: chromosome, fitness: fitness)
     rescue StandardError => e
       raise EvaluationError.new("Evaluation failed: #{e.message}",
-                                context: { evaluations: evaluations, chromosome: chromosome }), cause: e
+                                context: { evaluations: evaluations, chromosome: chromosome.coordinates }), cause: e
     end
   end
 end

@@ -146,6 +146,23 @@ RSpec.describe Genalgo::Optimizer do
     expect { described_class.new(configuration).run }.to raise_error(ArgumentError, /objective/)
   end
 
+  it "supports custom crossovers with only call and parent_count" do
+    crossover = Struct.new(:delegate) do
+      def parent_count(dimension)
+        delegate.parent_count(dimension)
+      end
+
+      def call(...)
+        delegate.call(...)
+      end
+    end.new(Genalgo::Crossovers::Simplex.new).freeze
+    configuration = Genalgo::Configuration.new(**params, crossover: crossover)
+    expected = described_class.new(configuration.with(crossover: crossover.delegate)).run(&objective)
+    actual = described_class.new(configuration).run(&objective)
+
+    expect(snapshot(actual)).to eq(snapshot(expected))
+  end
+
   private
 
   def snapshot(result)
