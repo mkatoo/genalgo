@@ -8,7 +8,14 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
   let(:random) { Random.new(123) }
   subject(:crossover) { described_class.new(alpha: 0.5) }
 
-  it_behaves_like "a bounded immutable crossover"
+  it_behaves_like "an immutable crossover"
+
+  it "samples offspring within bounds" do
+    sampler = crossover.prepare(parents, bounds: bounds)
+    children = Array.new(20) { sampler.call(random: random) }
+
+    expect(children).to all(satisfy { |genes| bounds.within_bounds?(genes) })
+  end
 
   it "expands each parental interval independently" do
     allow(random).to receive(:rand).and_return(0.0)

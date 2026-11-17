@@ -4,7 +4,7 @@ require_relative "../errors"
 
 module Genalgo
   module Crossovers
-    # Expands the parental simplex and clamps the sampled child to the bounds.
+    # Expands the parental simplex and samples candidate coordinates before normalization.
     class Simplex
       def initialize
         freeze
@@ -18,14 +18,15 @@ module Genalgo
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)
         vertices = expand(parents, bounds.dimension).each(&:freeze).freeze
-        ->(random:) { sample(vertices, bounds, random) }.freeze
+        ->(random:) { sample(vertices, random) }.freeze
       end
 
       private
 
-      def sample(vertices, bounds, random)
-        offset = sample_offset(vertices, bounds.dimension, random)
-        bounds.clamp(Array.new(bounds.dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] })
+      def sample(vertices, random)
+        dimension = vertices.last.size
+        offset = sample_offset(vertices, dimension, random)
+        Array.new(dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] }
       end
 
       def validate_parents!(parents, bounds)

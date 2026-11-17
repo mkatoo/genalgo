@@ -17,10 +17,39 @@ RSpec.describe Genalgo::Evaluator do
     expect(seen).not_to be(source)
     expect(source).to eq([-2, 30])
     expect(individual.chromosome).to eq([-1.0, 20.0])
+    expect(individual.chromosome).to all(be_a(Float))
     expect(individual.chromosome).to be(seen)
+    expect(individual.bounds).to be(bounds)
     expect(individual.fitness).to eq(19.0)
     expect(evaluator.evaluations).to eq(1)
     expect(evaluator.remaining).to eq(1)
+  end
+
+  it "copies frozen mixed numeric coordinates into a frozen Float chromosome" do
+    source = [0, Rational(31, 2)].freeze
+    evaluator = described_class.new(bounds: bounds, max_evaluations: 1, &:sum)
+
+    individual = evaluator.evaluate(source)
+
+    expect(individual.chromosome).not_to be(source)
+    expect(individual.chromosome).to eq([0.0, 15.5])
+    expect(individual.chromosome).to all(be_a(Float))
+    expect(individual.chromosome).to be_frozen
+    expect(individual.fitness).to eq(15.5)
+    expect(source).to eq([0, Rational(31, 2)])
+  end
+
+  [[0], [0, Float::NAN]].each do |source|
+    it "rejects invalid candidate #{source.inspect} before invoking the objective or spending budget" do
+      calls = 0
+      evaluator = described_class.new(bounds: bounds, max_evaluations: 1) { calls += 1 }
+
+      expect { evaluator.evaluate(source) }.to raise_error(ArgumentError, /finite real coordinates/)
+      expect(calls).to eq(0)
+      expect(evaluator.evaluations).to eq(0)
+      expect(evaluator.remaining).to eq(1)
+      expect(evaluator.evaluate([0, 15]).fitness).to eq(1.0)
+    end
   end
 
   it "does not invoke the objective after the budget is exhausted" do

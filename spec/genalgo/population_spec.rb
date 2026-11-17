@@ -73,7 +73,8 @@ RSpec.describe Genalgo::Population do
 
   it "rejects a mismatched replacement length and different bounds atomically" do
     before = population.to_a
-    other = Genalgo::Individual.new(bounds: Genalgo::Bounds.new(lower: [-1], upper: [1]), chromosome: [0], fitness: 0)
+    other_bounds = Genalgo::Bounds.new(lower: [-1], upper: [1])
+    other = Genalgo::Evaluator.new(bounds: other_bounds, max_evaluations: 1) { 0 }.evaluate([0])
 
     expect { population.replace([0], []) }.to raise_error(Genalgo::PopulationError)
     expect { population.replace([0, 1], [individual(0), other]) }.to raise_error(Genalgo::PopulationError)
@@ -89,6 +90,6 @@ RSpec.describe Genalgo::Population do
   private
 
   def individual(gene)
-    Genalgo::Individual.new(bounds: bounds, chromosome: [gene], fitness: gene * gene)
+    Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 1) { gene * gene }.evaluate([gene])
   end
 end

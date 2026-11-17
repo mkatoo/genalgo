@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "bounds"
+
 module Genalgo
   # Internal proof that coordinates were copied, clamped, converted to Float, and frozen.
   class BoundedChromosome

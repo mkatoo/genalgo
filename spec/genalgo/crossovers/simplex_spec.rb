@@ -8,12 +8,14 @@ RSpec.describe Genalgo::Crossovers::Simplex do
   let(:random) { Random.new(123) }
   subject(:crossover) { described_class.new }
 
-  it_behaves_like "a bounded immutable crossover"
+  it_behaves_like "an immutable crossover"
 
-  it "clamps expanded offspring separately for each coordinate" do
+  it "samples expanded offspring before boundary correction" do
     allow(random).to receive(:rand).and_return(0.0)
+    child = crossover.prepare(parents, bounds: bounds).call(random: random)
 
-    expect(crossover.prepare(parents, bounds: bounds).call(random: random)).to eq([1.0, 20.0, 3.0])
+    expect(child).to match([be_within(1e-12).of(Math.sqrt(5)), be_within(1e-12).of(15 + (5 * Math.sqrt(5))), 3.0])
+    expect(bounds.within_bounds?(child)).to be(false)
     expect(crossover.parent_count(3)).to eq(4)
   end
 

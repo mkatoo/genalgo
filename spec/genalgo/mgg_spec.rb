@@ -3,9 +3,10 @@
 RSpec.describe Genalgo::MGG do
   let(:bounds) { Genalgo::Bounds.new(lower: [-1, -1, -1], upper: [1, 1, 1]) }
   let(:individuals) do
+    evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 6) { |genes| genes.sum { |gene| gene * gene } }
     Array.new(6) do |index|
       genes = Array.new(3, index / 10.0)
-      Genalgo::Individual.new(bounds: bounds, chromosome: genes, fitness: genes.sum { |gene| gene * gene })
+      evaluator.evaluate(genes)
     end
   end
   let(:population) { Genalgo::Population.new(individuals) }

@@ -4,7 +4,7 @@ require_relative "individual"
 require_relative "bounded_chromosome"
 
 module Genalgo
-  # The only boundary that invokes the objective and counts attempted evaluations.
+  # Normalizes candidate chromosomes, invokes the objective, and counts attempted evaluations.
   class Evaluator
     attr_reader :evaluations
 
@@ -33,7 +33,7 @@ module Genalgo
 
     def evaluate_objective(chromosome)
       fitness = @objective.call(chromosome.coordinates)
-      Individual.new(bounds: @bounds, chromosome: chromosome, fitness: fitness)
+      Individual.new(chromosome: chromosome, fitness: fitness)
     rescue StandardError => e
       raise EvaluationError.new("Evaluation failed: #{e.message}",
                                 context: { evaluations: evaluations, chromosome: chromosome.coordinates }), cause: e

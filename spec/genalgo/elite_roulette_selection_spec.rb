@@ -170,6 +170,6 @@ RSpec.describe Genalgo::EliteRouletteSelection do
   private
 
   def create_individual(fitness:)
-    Genalgo::Individual.new(bounds: bounds, chromosome: [1.0, 2.0, 3.0], fitness: fitness)
+    Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 1) { fitness }.evaluate([1.0, 2.0, 3.0])
   end
 end

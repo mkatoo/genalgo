@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples "a bounded immutable crossover" do
+RSpec.shared_examples "an immutable crossover" do
   it "is immutable and leaves parents untouched when offspring is changed" do
     original = parents.map(&:dup)
     crossover.prepare(parents, bounds: bounds).call(random: random).fill(999)
@@ -17,7 +17,7 @@ RSpec.shared_examples "a bounded immutable crossover" do
     expect(child).to all(be_a(Float))
   end
 
-  it "reproduces varied, bounded offspring using only the supplied random stream" do
+  it "reproduces varied offspring using only the supplied random stream" do
     sampler = crossover.prepare(parents, bounds: bounds)
     first = Array.new(5) { sampler.call(random: random) }
     other_random = Random.new(123)
@@ -27,7 +27,6 @@ RSpec.shared_examples "a bounded immutable crossover" do
     expect(first).to eq(second)
     expect(random.rand).to eq(other_random.rand)
     expect(first.uniq.size).to be > 1
-    expect(first).to all(satisfy { |genes| bounds.within_bounds?(genes) })
   end
 
   it "samples repeatedly with the same offspring and random consumption as preparing each time" do
