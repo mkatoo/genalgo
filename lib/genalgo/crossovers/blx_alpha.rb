@@ -23,10 +23,6 @@ module Genalgo
         2
       end
 
-      def call(parents, bounds:, random:)
-        prepare(parents, bounds: bounds).call(random: random)
-      end
-
       # Capture clipped intervals once, then sample independently for each child.
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)

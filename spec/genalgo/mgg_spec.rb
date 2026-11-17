@@ -74,55 +74,49 @@ RSpec.describe Genalgo::MGG do
     expect(evaluator.evaluations).to eq(2)
   end
 
-  [false, true].each do |prepared|
-    context "with a custom crossover and preparation #{prepared}" do
-      let(:events) { [] }
-      let(:crossover) { recording_crossover(events, prepared: prepared) }
-      let(:configuration) do
-        Genalgo::Configuration.new(bounds: bounds, population_size: 6, max_evaluations: 20, crossover: crossover)
+  context "with a custom crossover" do
+    let(:events) { [] }
+    let(:crossover) { recording_crossover(events) }
+    let(:configuration) do
+      Genalgo::Configuration.new(bounds: bounds, population_size: 6, max_evaluations: 20, crossover: crossover)
+    end
+
+    it "prepares once per step and interleaves generation and evaluation" do
+      evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 4) do
+        events << :evaluate
+        0
       end
+      generation = described_class.new(configuration, evaluator: evaluator, random: random)
+      2.times { generation.step(population) }
 
-      it "interleaves generation and evaluation, preparing once per step when supported" do
-        evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 4) do
-          events << :evaluate
-          0
-        end
-        generation = described_class.new(configuration, evaluator: evaluator, random: random)
-        2.times { generation.step(population) }
-        step = (prepared ? [:prepare] : []) + %i[generate evaluate generate evaluate]
+      expect(events).to eq(%i[prepare generate evaluate generate evaluate] * 2)
+    end
 
-        expect(events).to eq(step * 2)
+    it "does not generate the second child if evaluating the first fails" do
+      evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 2) do
+        events << :evaluate
+        raise "failed first child"
       end
+      original = population.to_a
+      generation = described_class.new(configuration, evaluator: evaluator, random: random)
 
-      it "does not generate the second child if evaluating the first fails" do
-        evaluator = Genalgo::Evaluator.new(bounds: bounds, max_evaluations: 2) do
-          events << :evaluate
-          raise "failed first child"
-        end
-        original = population.to_a
-        generation = described_class.new(configuration, evaluator: evaluator, random: random)
-
-        expect { generation.step(population) }.to raise_error(Genalgo::EvaluationError)
-        expect(events).to eq((prepared ? [:prepare] : []) + %i[generate evaluate])
-        expect(population.to_a).to eq(original)
-        expect(evaluator.evaluations).to eq(1)
-      end
+      expect { generation.step(population) }.to raise_error(Genalgo::EvaluationError)
+      expect(events).to eq(%i[prepare generate evaluate])
+      expect(population.to_a).to eq(original)
+      expect(evaluator.evaluations).to eq(1)
     end
   end
 
   private
 
-  def recording_crossover(events, prepared:)
+  def recording_crossover(events)
     Class.new do
       define_method(:parent_count) { |_dimension| 2 }
-      define_method(:call) do |_parents, bounds:, random:|
-        events << :generate
-        bounds.sample(random: random)
-      end
-      if prepared
-        define_method(:prepare) do |parents, bounds:|
-          events << :prepare
-          ->(random:) { call(parents, bounds: bounds, random: random) }
+      define_method(:prepare) do |_parents, bounds:|
+        events << :prepare
+        lambda do |random:|
+          events << :generate
+          bounds.sample(random: random)
         end
       end
     end.new.freeze

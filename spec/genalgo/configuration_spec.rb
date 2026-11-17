@@ -54,6 +54,32 @@ RSpec.describe Genalgo::Configuration do
     expect { described_class.new(**params, typo: true) }.to raise_error(ArgumentError)
   end
 
+  it "rejects a crossover implementing call without prepare" do
+    crossover = Class.new do
+      def parent_count(_dimension)
+        2
+      end
+
+      def call(_parents, bounds:, random:)
+        bounds.sample(random: random)
+      end
+    end.new.freeze
+
+    expect { described_class.new(**params, crossover: crossover) }
+      .to raise_error(Genalgo::ConfigurationError, /prepare and parent_count/)
+  end
+
+  it "rejects a crossover without parent_count" do
+    crossover = Class.new do
+      def prepare(_parents, bounds:)
+        ->(random:) { bounds.sample(random: random) }
+      end
+    end.new.freeze
+
+    expect { described_class.new(**params, crossover: crossover) }
+      .to raise_error(Genalgo::ConfigurationError, /prepare and parent_count/)
+  end
+
   it "accepts the minimum Simplex population and an initialization-only budget" do
     configuration = described_class.new(**params, population_size: 3, max_evaluations: 3,
                                                   crossover: Genalgo::Crossovers::Simplex.new)

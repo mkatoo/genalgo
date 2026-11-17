@@ -3,7 +3,7 @@
 RSpec.shared_examples "a bounded immutable crossover" do
   it "is immutable and leaves parents untouched when offspring is changed" do
     original = parents.map(&:dup)
-    crossover.call(parents, bounds: bounds, random: random).fill(999)
+    crossover.prepare(parents, bounds: bounds).call(random: random).fill(999)
 
     expect(parents).to eq(original)
     expect(crossover).to be_frozen
@@ -11,16 +11,18 @@ RSpec.shared_examples "a bounded immutable crossover" do
 
   it "preserves identical parents as floating point coordinates" do
     identical = Array.new(crossover.parent_count(bounds.dimension)) { parents.first }
-    child = crossover.call(identical, bounds: bounds, random: random)
+    child = crossover.prepare(identical, bounds: bounds).call(random: random)
 
     expect(child).to eq(parents.first.map(&:to_f))
     expect(child).to all(be_a(Float))
   end
 
   it "reproduces varied, bounded offspring using only the supplied random stream" do
-    first = Array.new(5) { crossover.call(parents, bounds: bounds, random: random) }
+    sampler = crossover.prepare(parents, bounds: bounds)
+    first = Array.new(5) { sampler.call(random: random) }
     other_random = Random.new(123)
-    second = Array.new(5) { crossover.call(parents, bounds: bounds, random: other_random) }
+    other_sampler = crossover.prepare(parents, bounds: bounds)
+    second = Array.new(5) { other_sampler.call(random: other_random) }
 
     expect(first).to eq(second)
     expect(random.rand).to eq(other_random.rand)
@@ -28,10 +30,10 @@ RSpec.shared_examples "a bounded immutable crossover" do
     expect(first).to all(satisfy { |genes| bounds.within_bounds?(genes) })
   end
 
-  it "samples prepared parents with the same offspring and random consumption as repeated calls" do
+  it "samples repeatedly with the same offspring and random consumption as preparing each time" do
     sampler = crossover.prepare(parents, bounds: bounds)
     other_random = Random.new(123)
-    expected = Array.new(5) { crossover.call(parents, bounds: bounds, random: random) }
+    expected = Array.new(5) { crossover.prepare(parents, bounds: bounds).call(random: random) }
     actual = Array.new(5) { sampler.call(random: other_random) }
 
     expect(actual).to eq(expected)

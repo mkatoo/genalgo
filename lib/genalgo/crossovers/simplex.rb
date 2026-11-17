@@ -14,10 +14,6 @@ module Genalgo
         dimension + 1
       end
 
-      def call(parents, bounds:, random:)
-        prepare(parents, bounds: bounds).call(random: random)
-      end
-
       # Capture the expanded simplex once, then sample independently for each child.
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)

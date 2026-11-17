@@ -51,9 +51,9 @@ module Genalgo
     end
 
     def validate_crossover!
-      return if crossover.respond_to?(:call) && crossover.respond_to?(:parent_count) && crossover.frozen?
+      return if crossover.respond_to?(:prepare) && crossover.respond_to?(:parent_count) && crossover.frozen?
 
-      raise ConfigurationError, "Crossover must be immutable and implement call and parent_count"
+      raise ConfigurationError, "Crossover must be immutable and implement prepare and parent_count"
     end
 
     def validate_parent_count!

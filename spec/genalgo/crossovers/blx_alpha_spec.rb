@@ -13,20 +13,22 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
   it "expands each parental interval independently" do
     allow(random).to receive(:rand).and_return(0.0)
 
-    expect(crossover.call(parents, bounds: bounds, random: random)).to eq([-4.0, 100.0, 3.0])
+    expect(crossover.prepare(parents, bounds: bounds).call(random: random)).to eq([-4.0, 100.0, 3.0])
     expect(crossover.parent_count(bounds.dimension)).to eq(2)
   end
 
   it "clips intervals before sampling instead of clamping the resulting sample" do
     allow(random).to receive(:rand).and_return(0.25)
 
-    expect(crossover.call([[-9, 105, 3], [9, 195, 3]], bounds: bounds, random: random)).to eq([-5.0, 125.0, 3.0])
+    sampler = crossover.prepare([[-9, 105, 3], [9, 195, 3]], bounds: bounds)
+
+    expect(sampler.call(random: random)).to eq([-5.0, 125.0, 3.0])
   end
 
   it "is symmetric with respect to parent order" do
     allow(random).to receive(:rand).and_return(0.25)
-    first = crossover.call(parents, bounds: bounds, random: random)
-    second = crossover.call(parents.reverse, bounds: bounds, random: random)
+    first = crossover.prepare(parents, bounds: bounds).call(random: random)
+    second = crossover.prepare(parents.reverse, bounds: bounds).call(random: random)
 
     expect(first).to eq(second)
     expect(second).to eq([-2.0, 120.0, 3.0])
@@ -35,7 +37,9 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
   it "supports no expansion" do
     allow(random).to receive(:rand).and_return(0.0)
 
-    expect(described_class.new(alpha: 0).call(parents, bounds: bounds, random: random)).to eq(parents.first)
+    sampler = described_class.new(alpha: 0).prepare(parents, bounds: bounds)
+
+    expect(sampler.call(random: random)).to eq(parents.first)
   end
 
   [0.0, 0.5, Float::MAX].each do |alpha|
@@ -43,7 +47,8 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
       bounds = Genalgo::Bounds.new(lower: [-Float::MAX], upper: [Float::MAX])
       allow(random).to receive(:rand).and_return(0.5)
 
-      child = described_class.new(alpha: alpha).call([bounds.lower, bounds.upper], bounds: bounds, random: random)
+      sampler = described_class.new(alpha: alpha).prepare([bounds.lower, bounds.upper], bounds: bounds)
+      child = sampler.call(random: random)
 
       expect(child).to eq([0.0])
     end
@@ -53,14 +58,14 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
     bounds = Genalgo::Bounds.new(lower: [-10], upper: [10])
     allow(random).to receive(:rand).and_return(0.25)
 
-    child = described_class.new(alpha: Float::MAX).call([[-2], [2]], bounds: bounds, random: random)
+    child = described_class.new(alpha: Float::MAX).prepare([[-2], [2]], bounds: bounds).call(random: random)
 
     expect(child).to eq([-5.0])
   end
 
   [[], [[0]], [[0, 150, 3], [20, 150, 3]]].each do |parents|
     it "rejects inconsistent parents #{parents.inspect}" do
-      expect { crossover.call(parents, bounds: bounds, random: random) }.to raise_error(Genalgo::StrategyError)
+      expect { crossover.prepare(parents, bounds: bounds) }.to raise_error(Genalgo::StrategyError)
     end
   end
 
