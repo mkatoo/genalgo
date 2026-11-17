@@ -38,6 +38,26 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
     expect(described_class.new(alpha: 0).call(parents, bounds: bounds, random: random)).to eq(parents.first)
   end
 
+  [0.0, 0.5, Float::MAX].each do |alpha|
+    it "samples finite coordinates when the parental width overflows with alpha #{alpha}" do
+      bounds = Genalgo::Bounds.new(lower: [-Float::MAX], upper: [Float::MAX])
+      allow(random).to receive(:rand).and_return(0.5)
+
+      child = described_class.new(alpha: alpha).call([bounds.lower, bounds.upper], bounds: bounds, random: random)
+
+      expect(child).to eq([0.0])
+    end
+  end
+
+  it "clips an overflowing expansion to finite bounds before sampling" do
+    bounds = Genalgo::Bounds.new(lower: [-10], upper: [10])
+    allow(random).to receive(:rand).and_return(0.25)
+
+    child = described_class.new(alpha: Float::MAX).call([[-2], [2]], bounds: bounds, random: random)
+
+    expect(child).to eq([-5.0])
+  end
+
   [[], [[0]], [[0, 150, 3], [20, 150, 3]]].each do |parents|
     it "rejects inconsistent parents #{parents.inspect}" do
       expect { crossover.call(parents, bounds: bounds, random: random) }.to raise_error(Genalgo::StrategyError)

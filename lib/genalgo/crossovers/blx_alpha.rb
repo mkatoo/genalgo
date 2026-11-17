@@ -43,10 +43,14 @@ module Genalgo
       end
 
       def expanded_interval(gene_x, gene_y, lower, upper)
-        low, high = [gene_x, gene_y].minmax
+        low = gene_x
+        high = gene_y
+        low, high = high, low if low > high
         expansion = alpha.zero? ? 0.0 : alpha * (high - low)
-        low = [low - expansion, lower].max
-        high = [high + expansion, upper].min
+        low -= expansion
+        high += expansion
+        low = lower if low < lower
+        high = upper if high > upper
         [low, high]
       end
 
