@@ -28,11 +28,18 @@ module Genalgo
     end
 
     def clamp(chromosome)
-      unless valid_chromosome?(chromosome)
+      unless chromosome.is_a?(Array) && chromosome.size == dimension
         raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
       end
 
-      chromosome.each_with_index.map { |gene, index| gene.to_f.clamp(@lower[index], @upper[index]) }
+      Array.new(dimension) do |index|
+        gene = chromosome[index]
+        unless NumericValidation.finite_real?(gene)
+          raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
+        end
+
+        gene.to_f.clamp(@lower[index], @upper[index])
+      end
     end
 
     def sample(random:)

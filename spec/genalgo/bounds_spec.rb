@@ -39,6 +39,24 @@ RSpec.describe Genalgo::Bounds do
     expect(chromosome).to eq([-2.0, 30.0, 99.0])
   end
 
+  it "converts a frozen chromosome with mixed real coordinates into a new mutable Float array" do
+    chromosome = [-2, Rational(25, 2), 3.0].freeze
+
+    result = bounds.clamp(chromosome)
+
+    expect(result).to eq([-1.0, 12.5, 3.0])
+    expect(result).to all(be_a(Float))
+    expect(result).not_to be(chromosome)
+    expect(result).not_to be_frozen
+  end
+
+  it "leaves earlier coordinates unchanged when a later coordinate is invalid" do
+    chromosome = [-2.0, Float::INFINITY, 99.0]
+
+    expect { bounds.clamp(chromosome) }.to raise_error(ArgumentError)
+    expect(chromosome).to eq([-2.0, Float::INFINITY, 99.0])
+  end
+
   it "samples finite coordinates even when the interval width would overflow" do
     wide = described_class.new(lower: [-1e308], upper: [1e308])
     random = Random.new(123)
@@ -64,10 +82,13 @@ RSpec.describe Genalgo::Bounds do
     end
   end
 
-  [nil, "abc", [0.0], [0.0, 15.0, 3.0, 4.0], [0.0, nil, 3.0], [0.0, Float::NAN, 3.0]].each do |chromosome|
+  [nil, "abc", [0.0], [0.0, 15.0, 3.0, 4.0], [0.0, nil, 3.0], [0.0, "15", 3.0],
+   [0.0, Float::NAN, 3.0], [0.0, Float::INFINITY, 3.0], [0.0, -Float::INFINITY, 3.0],
+   [0.0, Complex(15, 0), 3.0], [0.0, 10**400, 3.0]].each do |chromosome|
     it "rejects a malformed chromosome #{chromosome.inspect}" do
       expect(bounds.within_bounds?(chromosome)).to be(false)
-      expect { bounds.clamp(chromosome) }.to raise_error(ArgumentError)
+      expect { bounds.clamp(chromosome) }
+        .to raise_error(ArgumentError, "Chromosome must contain 3 finite real coordinates")
     end
   end
 end
