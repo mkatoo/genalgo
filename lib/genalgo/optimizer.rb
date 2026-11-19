@@ -24,13 +24,21 @@ module Genalgo
                                 max_evaluations: configuration.max_evaluations, &)
       population = initialize_population(evaluator, random)
       history = [snapshot(population, evaluator)]
-      generation = MGG.new(configuration, evaluator: evaluator, random: random)
-      evolve(population, history, evaluator, generation)
+      evolve(population, history, evaluator, random)
       Result.new(configuration: configuration, population: population, history: history,
                  evaluations: evaluator.evaluations)
     end
 
     private
+
+    # This run evaluates every parent using the same bounds before handing it to MGG.
+    def prepare_normalized_parents?
+      return false unless configuration.bounds.instance_of?(Bounds)
+
+      crossover = configuration.crossover
+      crossover.respond_to?(:instance_of?) &&
+        (crossover.instance_of?(Crossovers::BlxAlpha) || crossover.instance_of?(Crossovers::Simplex))
+    end
 
     def initialize_population(evaluator, random)
       individuals = Array.new(configuration.population_size) do
@@ -39,7 +47,9 @@ module Genalgo
       Population.new(individuals)
     end
 
-    def evolve(population, history, evaluator, generation)
+    def evolve(population, history, evaluator, random)
+      generation = MGG.new(configuration, evaluator: evaluator, random: random,
+                                          prepare_normalized: prepare_normalized_parents?)
       while evaluator.remaining >= MGG::CHILDREN_PER_STEP
         generation.step(population)
         history << snapshot(population, evaluator)

@@ -26,11 +26,15 @@ module Genalgo
       # Capture clipped intervals once, then sample independently for each child.
       def prepare(parents, bounds:)
         validate_parents!(parents, bounds)
-        intervals = expanded_intervals(parents, bounds)
-        ->(random:) { intervals.map { |low, high| IntervalSampling.sample(low, high, random: random) } }.freeze
+        prepare_normalized(parents, bounds: bounds)
       end
 
       private
+
+      def prepare_normalized(parents, bounds:)
+        intervals = expanded_intervals(parents, bounds)
+        ->(random:) { intervals.map { |low, high| IntervalSampling.sample(low, high, random: random) } }.freeze
+      end
 
       def validate_parents!(parents, bounds)
         unless parents.size == parent_count(bounds.dimension) && parents.all? { |parent| bounds.within_bounds?(parent) }

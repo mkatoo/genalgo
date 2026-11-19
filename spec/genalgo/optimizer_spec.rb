@@ -163,6 +163,34 @@ RSpec.describe Genalgo::Optimizer do
     expect(snapshot(actual)).to eq(snapshot(expected))
   end
 
+  it "calls an overridden prepare on a built-in crossover subclass" do
+    crossover = Class.new(Genalgo::Crossovers::BlxAlpha) do
+      def prepare(_parents, bounds:)
+        ->(**) { Array.new(bounds.dimension, 0.0) }
+      end
+    end.new
+    configuration = Genalgo::Configuration.new(**params, crossover: crossover)
+    seen = []
+
+    described_class.new(configuration).run do |genes|
+      seen << genes
+      objective.call(genes)
+    end
+
+    expect(seen.drop(params[:population_size])).to all(eq([0.0, 10.0, 3.0]))
+  end
+
+  it "validates parents using a custom Bounds subclass" do
+    custom_bounds = Class.new(Genalgo::Bounds) do
+      def within_bounds?(_chromosome)
+        false
+      end
+    end.new(lower: bounds.lower, upper: bounds.upper)
+    configuration = Genalgo::Configuration.new(**params, bounds: custom_bounds)
+
+    expect { described_class.new(configuration).run(&objective) }.to raise_error(Genalgo::StrategyError)
+  end
+
   private
 
   def snapshot(result)
