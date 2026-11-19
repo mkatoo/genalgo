@@ -44,7 +44,7 @@ module Genalgo
     def replace(indices, individuals)
       validate_replacement!(indices, individuals)
       removed_best = indices.any? { |index| self[index].equal?(best_individual) }
-      indices.zip(individuals).each { |index, individual| @individuals[index] = individual }
+      indices.zip(individuals) { |index, individual| @individuals[index] = individual }
       update_best(individuals, removed_best: removed_best)
       self
     end
@@ -52,11 +52,15 @@ module Genalgo
     private
 
     def update_best(individuals, removed_best:)
-      @best_individual = if removed_best && !individuals.include?(best_individual)
-                           @individuals.min_by(&:fitness)
-                         else
-                           [best_individual, *individuals].min_by(&:fitness)
-                         end
+      if removed_best && !individuals.include?(best_individual)
+        @best_individual = @individuals.min_by(&:fitness)
+      else
+        best = best_individual
+        individuals.each do |individual|
+          best = individual if individual.fitness < best.fitness
+        end
+        @best_individual = best
+      end
     end
 
     def validate_individuals!(individuals)

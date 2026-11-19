@@ -23,14 +23,9 @@ module Genalgo
       validate_selection!(individuals, size)
       return [] if size.zero?
 
-      sorted_individuals = individuals.sort_by(&:fitness)
-      elite = sorted_individuals.first
-      remaining_individuals = sorted_individuals[1..]
-
-      return [elite] if size == 1
-
-      non_elite_selected = select_non_elite(remaining_individuals, size - 1)
-      non_elite_selected + [elite]
+      remaining = individuals.sort_by(&:fitness)
+      elite = remaining.shift
+      select_non_elite(remaining, size - 1) << elite
     end
 
     private
@@ -42,8 +37,7 @@ module Genalgo
       raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
     end
 
-    def select_non_elite(sorted_individuals, count)
-      remaining = sorted_individuals.dup
+    def select_non_elite(remaining, count)
       Array.new(count) do
         remaining.delete_at(weighted_index(selection_weights(remaining)))
       end
@@ -52,15 +46,24 @@ module Genalgo
     # Removing selected individuals preserves ascending fitness order.
     def selection_weights(sorted_individuals)
       normalized = normalized_fitness(sorted_individuals)
-      width = normalized.last - normalized.first
-      return Array.new(sorted_individuals.size, 1.0) if width.zero?
+      first = normalized.first
+      width = normalized.last - first
+      return normalized.fill(1.0) if width.zero?
 
-      normalized.map { |fitness| @scaling_factor / (((fitness - normalized.first) / width) + @scaling_factor) }
+      normalized.map! do |fitness|
+        distance = (fitness - first) / width
+        @scaling_factor / (distance + @scaling_factor)
+      end
     end
 
-    def normalized_fitness(individuals)
-      scale = individuals.map { |individual| individual.fitness.abs }.max
-      individuals.map { |individual| scale.zero? ? 0.0 : individual.fitness / scale }
+    def normalized_fitness(sorted_individuals)
+      lowest = sorted_individuals.first.fitness
+      highest = sorted_individuals.last.fitness
+      # The largest magnitude in a sorted list is at one of its endpoints.
+      scale = lowest.abs.clamp(highest.abs, nil)
+      return Array.new(sorted_individuals.size, 0.0) if scale.zero?
+
+      sorted_individuals.map { |individual| individual.fitness / scale }
     end
 
     def weighted_index(weights)
