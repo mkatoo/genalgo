@@ -61,8 +61,11 @@ module Genalgo
       end
 
       def update_offset!(offset, previous, current, factor)
-        offset.each_index do |coordinate|
+        coordinate = 0
+        dimension = offset.size
+        while coordinate < dimension
           offset[coordinate] = factor * (previous[coordinate] - current[coordinate] + offset[coordinate])
+          coordinate += 1
         end
       end
     end
