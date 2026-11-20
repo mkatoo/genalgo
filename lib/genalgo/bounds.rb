@@ -39,14 +39,7 @@ module Genalgo
         raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
       end
 
-      Array.new(dimension) do |index|
-        gene = chromosome[index]
-        unless NumericValidation.finite_real?(gene)
-          raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
-        end
-
-        gene.to_f.clamp(@lower[index], @upper[index])
-      end
+      Array.new(dimension) { |index| clamp_coordinate(chromosome[index], @lower[index], @upper[index]) }
     end
 
     def sample(random:)
@@ -56,6 +49,21 @@ module Genalgo
     end
 
     private
+
+    def clamp_coordinate(gene, lower, upper)
+      if gene.is_a?(Float) && gene.finite?
+        return lower if gene < lower
+        return upper if gene > upper
+
+        return gene
+      end
+
+      unless NumericValidation.finite_real?(gene)
+        raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
+      end
+
+      gene.to_f.clamp(lower, upper)
+    end
 
     def validate_arrays!(lower, upper)
       return if lower.is_a?(Array) && upper.is_a?(Array) && !lower.empty? && lower.size == upper.size
