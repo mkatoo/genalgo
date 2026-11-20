@@ -23,14 +23,15 @@ module Genalgo
       private
 
       def prepare_normalized(parents, bounds:)
-        vertices = expand(parents, bounds.dimension).each(&:freeze).freeze
-        ->(random:) { sample(vertices, random) }.freeze
+        expansion = Math.sqrt(bounds.dimension + 2)
+        # Transpose creates a fresh array for each coordinate. Expand the vertices there.
+        columns = parents.transpose.each { |column| expand_column!(column, expansion) }.freeze
+        ->(random:) { sample(columns, random) }.freeze
       end
 
-      def sample(vertices, random)
-        dimension = vertices.last.size
-        offset = sample_offset(vertices, dimension, random)
-        Array.new(dimension) { |coordinate| vertices.last[coordinate] + offset[coordinate] }
+      def sample(columns, random)
+        factors = Array.new(columns.size) { |index| random.rand**(1.0 / (index + 1)) }
+        columns.map { |column| sample_coordinate(column, factors) }
       end
 
       def validate_parents!(parents, bounds)
@@ -41,32 +42,26 @@ module Genalgo
         raise StrategyError, "Simplex requires #{parent_count(bounds.dimension)} chromosomes within the same bounds"
       end
 
-      def expand(parents, dimension)
-        centroid = parents.transpose.map { |genes| genes.sum.fdiv(genes.size) }
-        expansion = Math.sqrt(dimension + 2)
-        parents.map do |parent|
-          Array.new(dimension) do |coordinate|
-            centroid[coordinate] + (expansion * (parent[coordinate] - centroid[coordinate]))
-          end
+      def expand_column!(column, expansion)
+        size = column.size
+        centroid = column.sum.fdiv(size)
+        index = 0
+        while index < size
+          column[index] = centroid + (expansion * (column[index] - centroid))
+          index += 1
         end
+        column.freeze
       end
 
-      def sample_offset(vertices, dimension, random)
-        offset = Array.new(dimension, 0.0)
-        (1..dimension).each do |index|
-          factor = random.rand**(1.0 / index)
-          update_offset!(offset, vertices[index - 1], vertices[index], factor)
+      def sample_coordinate(column, factors)
+        offset = 0.0
+        size = factors.size
+        index = 0
+        while index < size
+          offset = factors[index] * (column[index] - column[index + 1] + offset)
+          index += 1
         end
-        offset
-      end
-
-      def update_offset!(offset, previous, current, factor)
-        coordinate = 0
-        dimension = offset.size
-        while coordinate < dimension
-          offset[coordinate] = factor * (previous[coordinate] - current[coordinate] + offset[coordinate])
-          coordinate += 1
-        end
+        column.last + offset
       end
     end
   end
