@@ -9,13 +9,14 @@ RSpec.describe Genalgo::Result do
     worst = evaluator.evaluate([1])
     population = [worst, best]
     history = [described_class::Snapshot.new(best_individual: best, evaluations: 2)]
-    result = described_class.new(configuration: configuration, population: population, history: history, evaluations: 2)
+    result = described_class.new(configuration: configuration, population: population, history: history)
     population.clear
     history.clear
 
     expect(result.population).to eq([worst, best])
     expect(result.best_individual).to be(best)
     expect(result.history.last.best_individual).to be(best)
+    expect(result.evaluations).to eq(2)
     expect(result.seed).to eq(0)
     expect(result).to be_frozen
     expect(result.population).to be_frozen
@@ -32,11 +33,17 @@ RSpec.describe Genalgo::Result do
     population = Genalgo::Population.new([first, second])
     population.replace([0, 1], [second, first])
     history = [described_class::Snapshot.new(best_individual: population.best_individual, evaluations: 4)]
-    result = described_class.new(configuration: configuration, population: population, history: history, evaluations: 4)
+    result = described_class.new(configuration: configuration, population: population, history: history)
     population.replace([0, 1], [second, second])
 
     expect(result.population).to eq([second, first])
     expect(result.best_individual).to be(first)
     expect(result.history.last.best_individual).to be(result.best_individual)
+    expect(result.evaluations).to eq(4)
+  end
+
+  it "requires a final history snapshot" do
+    expect { described_class.new(configuration: nil, population: [], history: []) }
+      .to raise_error(ArgumentError, /non-empty history/)
   end
 end

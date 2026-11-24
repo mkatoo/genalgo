@@ -3,19 +3,23 @@
 module Genalgo
   # A completed run with immutable collections and shared immutable individuals.
   class Result
-    attr_reader :configuration, :population, :history, :evaluations, :best_individual
+    attr_reader :configuration, :population, :history
 
-    def initialize(configuration:, population:, history:, evaluations:)
+    def initialize(configuration:, population:, history:)
+      raise ArgumentError, "Result requires a non-empty history" if history.empty?
+
       @configuration = configuration
       @population = population.to_a.dup.freeze
       @history = history.dup.freeze
-      @evaluations = evaluations
-      @best_individual = if population.respond_to?(:best_individual)
-                           population.best_individual
-                         else
-                           @population.min_by(&:fitness)
-                         end
       freeze
+    end
+
+    def evaluations
+      history.last.evaluations
+    end
+
+    def best_individual
+      history.last.best_individual
     end
 
     def seed

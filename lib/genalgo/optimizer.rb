@@ -25,8 +25,7 @@ module Genalgo
       population = initialize_population(evaluator, random)
       history = [snapshot(population, evaluator)]
       evolve(population, history, evaluator, random)
-      Result.new(configuration: configuration, population: population, history: history,
-                 evaluations: evaluator.evaluations)
+      Result.new(configuration: configuration, population: population, history: history)
     end
 
     private
