@@ -5,8 +5,7 @@ require_relative "individual"
 require_relative "numeric_validation"
 
 module Genalgo
-  # Implements elite strategy combined with roulette wheel selection.
-  # Preserves the best individual and selects remaining using fitness-proportionate selection.
+  # Keeps the elite from an MGG family and selects one other survivor by weighted roulette.
   class EliteRouletteSelection
     DEFAULT_SCALING_FACTOR = 0.5
 
@@ -19,31 +18,19 @@ module Genalgo
       @scaling_factor = scaling_factor.to_f
     end
 
-    def select(individuals, size)
-      validate_selection!(individuals, size)
-      return [] if size.zero?
+    def select(family)
+      unless family.size == 4 && family.all?(Individual)
+        raise StrategyError, "Selection requires four evaluated individuals"
+      end
 
-      remaining = individuals.sort_by(&:fitness)
+      remaining = family.sort_by(&:fitness)
       elite = remaining.shift
-      select_non_elite(remaining, size - 1) << elite
+      survivor = remaining.fetch(weighted_index(selection_weights(remaining)))
+      [survivor, elite]
     end
 
     private
 
-    def validate_selection!(individuals, size)
-      raise StrategyError, "Selection requires evaluated individuals" unless individuals.all?(Individual)
-      return if size.is_a?(Integer) && size.between?(0, individuals.size)
-
-      raise StrategyError, "Selection size must be an integer between 0 and #{individuals.size}"
-    end
-
-    def select_non_elite(remaining, count)
-      Array.new(count) do
-        remaining.delete_at(weighted_index(selection_weights(remaining)))
-      end
-    end
-
-    # Removing selected individuals preserves ascending fitness order.
     def selection_weights(sorted_individuals)
       normalized = normalized_fitness(sorted_individuals)
       first = normalized.first

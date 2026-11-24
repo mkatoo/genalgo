@@ -24,7 +24,7 @@ module Genalgo
       children = evaluate_children(chromosomes)
       replaced = indices.size == 2 ? indices : indices.sample(2, random: @random)
       family = replaced.map { |index| population[index] } + children
-      population.replace(replaced, @selection.select(family, 2))
+      population.replace(replaced, @selection.select(family))
     end
 
     private
