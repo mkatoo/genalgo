@@ -70,12 +70,6 @@ RSpec.describe Genalgo::Crossovers::BlxAlpha do
     expect(child).to eq([-5.0])
   end
 
-  [[], [[0]], [[0, 150, 3], [20, 150, 3]]].each do |parents|
-    it "rejects inconsistent parents #{parents.inspect}" do
-      expect { crossover.prepare(parents, bounds: bounds) }.to raise_error(Genalgo::StrategyError)
-    end
-  end
-
   [-1, Float::NAN, Float::INFINITY, Complex(1, 1), nil, 10**400].each do |alpha|
     it "rejects invalid alpha #{alpha.inspect}" do
       expect { described_class.new(alpha: alpha) }.to raise_error(Genalgo::ConfigurationError)

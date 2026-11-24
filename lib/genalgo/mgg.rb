@@ -7,11 +7,10 @@ module Genalgo
   class MGG
     CHILDREN_PER_STEP = 2
 
-    def initialize(configuration, evaluator:, random:, prepare_normalized: false)
+    def initialize(configuration, evaluator:, random:)
       @bounds = configuration.bounds
       @crossover = configuration.crossover
       @parent_count = @crossover.parent_count(@bounds.dimension)
-      @prepare_normalized = prepare_normalized
       @evaluator = evaluator
       @random = random
       @selection = EliteRouletteSelection.new(random: random)
@@ -31,11 +30,7 @@ module Genalgo
     private
 
     def evaluate_children(chromosomes)
-      sampler = if @prepare_normalized
-                  @crossover.__send__(:prepare_normalized, chromosomes, bounds: @bounds)
-                else
-                  @crossover.prepare(chromosomes, bounds: @bounds)
-                end
+      sampler = @crossover.prepare(chromosomes, bounds: @bounds)
       Array.new(CHILDREN_PER_STEP) do
         @evaluator.evaluate(sampler.call(random: @random))
       end

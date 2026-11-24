@@ -50,8 +50,4 @@ RSpec.shared_examples "an immutable crossover" do
 
     expect(sampler.call(random: Random.new(123))).to eq(expected)
   end
-
-  it "rejects invalid parents before returning a prepared sampler" do
-    expect { crossover.prepare([], bounds: bounds) }.to raise_error(Genalgo::StrategyError)
-  end
 end

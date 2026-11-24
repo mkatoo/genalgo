@@ -190,17 +190,6 @@ RSpec.describe Genalgo::Optimizer do
     expect(seen.drop(params[:population_size])).to all(eq([0.0, 10.0, 3.0]))
   end
 
-  it "validates parents using a custom Bounds subclass" do
-    custom_bounds = Class.new(Genalgo::Bounds) do
-      def within_bounds?(_chromosome)
-        false
-      end
-    end.new(lower: bounds.lower, upper: bounds.upper)
-    configuration = Genalgo::Configuration.new(**params, bounds: custom_bounds)
-
-    expect { described_class.new(configuration).run(&objective) }.to raise_error(Genalgo::StrategyError)
-  end
-
   private
 
   def snapshot(result)

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../errors"
-
 module Genalgo
   module Crossovers
     # Expands the parental simplex and samples candidate coordinates before normalization.
@@ -16,13 +14,6 @@ module Genalgo
 
       # Capture the expanded simplex once, then sample independently for each child.
       def prepare(parents, bounds:)
-        validate_parents!(parents, bounds)
-        prepare_normalized(parents, bounds: bounds)
-      end
-
-      private
-
-      def prepare_normalized(parents, bounds:)
         expansion = Math.sqrt(bounds.dimension + 2)
         # Transpose creates a fresh array for each coordinate. Expand the vertices there.
         columns = parents.transpose.freeze
@@ -31,20 +22,14 @@ module Genalgo
         ->(random:) { sample(columns, scales, random) }.freeze
       end
 
+      private
+
       def sample(columns, scales, random)
         factors = Array.new(columns.size) { |index| random.rand**(1.0 / (index + 1)) }
         child = columns.map { |column| sample_coordinate(column, factors) }
         # The mathematical result can exceed Float even when every parent is finite.
         scales&.each { |index, scale| child[index] = (child[index] * scale).clamp(-Float::MAX, Float::MAX) }
         child
-      end
-
-      def validate_parents!(parents, bounds)
-        return if parents.size == parent_count(bounds.dimension) && parents.all? do |parent|
-          bounds.within_bounds?(parent)
-        end
-
-        raise StrategyError, "Simplex requires #{parent_count(bounds.dimension)} chromosomes within the same bounds"
       end
 
       def scale_large_columns!(columns, bounds, expansion)

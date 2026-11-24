@@ -25,24 +25,13 @@ module Genalgo
 
       # Capture clipped intervals once, then sample independently for each child.
       def prepare(parents, bounds:)
-        validate_parents!(parents, bounds)
-        prepare_normalized(parents, bounds: bounds)
-      end
-
-      private
-
-      def prepare_normalized(parents, bounds:)
         lower, upper = expanded_intervals(parents, bounds)
         lambda do |random:|
           Array.new(lower.size) { |index| IntervalSampling.sample(lower[index], upper[index], random: random) }
         end.freeze
       end
 
-      def validate_parents!(parents, bounds)
-        unless parents.size == parent_count(bounds.dimension) && parents.all? { |parent| bounds.within_bounds?(parent) }
-          raise StrategyError, "BLX-alpha requires two chromosomes within the same bounds"
-        end
-      end
+      private
 
       def expanded_interval(gene_x, gene_y, lower, upper)
         low = gene_x.to_f

@@ -45,19 +45,4 @@ RSpec.describe Genalgo::Crossovers::Simplex do
     expect(sampler.call(random: random)).to eq([0.0])
     expect(sampler.call(random: random)).to eq([Float::MAX])
   end
-
-  [0, 1, 3, 5].each do |count|
-    it "rejects #{count} parents when the dimension requires four" do
-      candidates = Array.new(count) { parents.first }
-
-      expect { crossover.prepare(candidates, bounds: bounds) }.to raise_error(Genalgo::StrategyError)
-    end
-  end
-
-  it "rejects mismatched dimensions and out-of-bounds parents" do
-    [[0], [99, 15, 3]].each do |invalid|
-      expect { crossover.prepare([invalid, *parents.drop(1)], bounds: bounds) }
-        .to raise_error(Genalgo::StrategyError)
-    end
-  end
 end

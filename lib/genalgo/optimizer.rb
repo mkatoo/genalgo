@@ -31,15 +31,6 @@ module Genalgo
 
     private
 
-    # This run evaluates every parent using the same bounds before handing it to MGG.
-    def prepare_normalized_parents?
-      return false unless configuration.bounds.instance_of?(Bounds)
-
-      crossover = configuration.crossover
-      crossover.respond_to?(:instance_of?) &&
-        (crossover.instance_of?(Crossovers::BlxAlpha) || crossover.instance_of?(Crossovers::Simplex))
-    end
-
     def initialize_population(evaluator, random)
       individuals = Array.new(configuration.population_size) do
         evaluator.evaluate(configuration.bounds.sample(random: random))
@@ -48,8 +39,7 @@ module Genalgo
     end
 
     def evolve(population, history, evaluator, random)
-      generation = MGG.new(configuration, evaluator: evaluator, random: random,
-                                          prepare_normalized: prepare_normalized_parents?)
+      generation = MGG.new(configuration, evaluator: evaluator, random: random)
       while evaluator.remaining >= MGG::CHILDREN_PER_STEP
         generation.step(population)
         history << snapshot(population, evaluator)
