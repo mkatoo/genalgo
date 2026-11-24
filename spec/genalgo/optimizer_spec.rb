@@ -137,6 +137,16 @@ RSpec.describe Genalgo::Optimizer do
         expect(result.population.map(&:chromosome)).to all(eq([0.5, 3.0, 0.0]))
         expect(result.population.map(&:fitness)).to all(eq(9.25))
       end
+
+      it "evaluates offspring with a coordinate fixed at Float::MAX" do
+        bounds = Genalgo::Bounds.new(lower: [Float::MAX], upper: [Float::MAX])
+        result = described_class.new(configuration.with(bounds: bounds)).run do |genes|
+          expect(genes).to eq([Float::MAX])
+          0
+        end
+
+        expect(result.evaluations).to eq(params[:max_evaluations])
+      end
     end
   end
 

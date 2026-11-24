@@ -25,13 +25,18 @@ module Genalgo
       def prepare_normalized(parents, bounds:)
         expansion = Math.sqrt(bounds.dimension + 2)
         # Transpose creates a fresh array for each coordinate. Expand the vertices there.
-        columns = parents.transpose.each { |column| expand_column!(column, expansion) }.freeze
-        ->(random:) { sample(columns, random) }.freeze
+        columns = parents.transpose.freeze
+        scales = scale_large_columns!(columns, bounds, expansion)
+        columns.each { |column| expand_column!(column, expansion) }
+        ->(random:) { sample(columns, scales, random) }.freeze
       end
 
-      def sample(columns, random)
+      def sample(columns, scales, random)
         factors = Array.new(columns.size) { |index| random.rand**(1.0 / (index + 1)) }
-        columns.map { |column| sample_coordinate(column, factors) }
+        child = columns.map { |column| sample_coordinate(column, factors) }
+        # The mathematical result can exceed Float even when every parent is finite.
+        scales&.each { |index, scale| child[index] = (child[index] * scale).clamp(-Float::MAX, Float::MAX) }
+        child
       end
 
       def validate_parents!(parents, bounds)
@@ -40,6 +45,28 @@ module Genalgo
         end
 
         raise StrategyError, "Simplex requires #{parent_count(bounds.dimension)} chromosomes within the same bounds"
+      end
+
+      def scale_large_columns!(columns, bounds, expansion)
+        # Leave headroom for the centroid sum, vertex expansion and recursive offsets.
+        limit = Float::MAX / (8 * (columns.size + 1) * expansion)
+        return if bounds.lower.min >= -limit && bounds.upper.max <= limit
+
+        scales = {}
+        columns.each_with_index do |column, index|
+          scale = scale_column!(column, limit)
+          scales[index] = scale if scale
+        end
+        scales.freeze
+      end
+
+      def scale_column!(column, limit)
+        low, high = column.minmax
+        scale = [low.abs, high.abs].max.to_f
+        return if scale <= limit
+
+        column.map! { |gene| gene.fdiv(scale) }
+        scale
       end
 
       def expand_column!(column, expansion)

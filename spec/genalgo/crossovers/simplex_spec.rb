@@ -37,6 +37,15 @@ RSpec.describe Genalgo::Crossovers::Simplex do
     expect(child).to match([be_within(1e-12).of(5.0 / 6), be_within(1e-12).of(4.0 / 3)])
   end
 
+  it "samples opposite extreme coordinates and saturates results beyond the Float range" do
+    bounds = Genalgo::Bounds.new(lower: [-Float::MAX], upper: [Float::MAX])
+    allow(random).to receive(:rand).and_return(0.5, 0.0)
+    sampler = crossover.prepare([[-Float::MAX], [Float::MAX]], bounds: bounds)
+
+    expect(sampler.call(random: random)).to eq([0.0])
+    expect(sampler.call(random: random)).to eq([Float::MAX])
+  end
+
   [0, 1, 3, 5].each do |count|
     it "rejects #{count} parents when the dimension requires four" do
       candidates = Array.new(count) { parents.first }
