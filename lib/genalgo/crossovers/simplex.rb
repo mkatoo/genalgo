@@ -12,13 +12,13 @@ module Genalgo
         dimension + 1
       end
 
-      # Capture the expanded simplex once, then sample independently for each child.
+      # Compute expanded vertex differences once, then sample independently for each child.
       def prepare(parents, bounds:)
         expansion = Math.sqrt(bounds.dimension + 2)
-        # Transpose creates a fresh array for each coordinate. Expand the vertices there.
+        # Reuse the transposed columns for the differences and the last expanded vertex.
         columns = parents.transpose.freeze
         scales = scale_large_columns!(columns, bounds, expansion)
-        columns.each { |column| expand_column!(column, expansion) }
+        columns.each { |column| store_expanded_differences!(column, expansion) }
         ->(random:) { sample(columns, scales, random) }.freeze
       end
 
@@ -54,15 +54,23 @@ module Genalgo
         scale
       end
 
-      def expand_column!(column, expansion)
+      def store_expanded_differences!(column, expansion)
+        centroid = column.sum.fdiv(column.size)
+        previous = centroid + (expansion * (column[0] - centroid))
+        column[-1] = store_differences!(column, expansion, centroid, previous)
+        column.freeze
+      end
+
+      def store_differences!(column, expansion, centroid, previous)
         size = column.size
-        centroid = column.sum.fdiv(size)
-        index = 0
+        index = 1
         while index < size
-          column[index] = centroid + (expansion * (column[index] - centroid))
+          current = centroid + (expansion * (column[index] - centroid))
+          column[index - 1] = previous - current
+          previous = current
           index += 1
         end
-        column.freeze
+        previous
       end
 
       def sample_coordinate(column, factors)
@@ -70,7 +78,7 @@ module Genalgo
         size = factors.size
         index = 0
         while index < size
-          offset = factors[index] * (column[index] - column[index + 1] + offset)
+          offset = factors[index] * (column[index] + offset)
           index += 1
         end
         column.last + offset
