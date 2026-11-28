@@ -35,11 +35,18 @@ module Genalgo
     end
 
     def clamp(chromosome)
-      unless chromosome.is_a?(Array) && chromosome.size == dimension
-        raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
-      end
-
+      validate_chromosome!(chromosome)
       Array.new(dimension) { |index| clamp_coordinate(chromosome[index], @lower[index], @upper[index]) }
+    end
+
+    # The caller transfers ownership of an internally generated candidate.
+    def clamp_owned!(chromosome)
+      validate_chromosome!(chromosome)
+      index = -1
+      chromosome.map! do |gene|
+        index += 1
+        clamp_coordinate(gene, @lower[index], @upper[index])
+      end
     end
 
     def sample(random:)
@@ -49,6 +56,12 @@ module Genalgo
     end
 
     private
+
+    def validate_chromosome!(chromosome)
+      return if chromosome.is_a?(Array) && chromosome.size == dimension
+
+      raise ArgumentError, "Chromosome must contain #{dimension} finite real coordinates"
+    end
 
     def clamp_coordinate(gene, lower, upper)
       if gene.is_a?(Float) && gene.finite?

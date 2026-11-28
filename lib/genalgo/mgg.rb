@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "elite_roulette_selection"
+require_relative "crossovers/blx_alpha"
 
 module Genalgo
   # One MGG update replaces two parents using their family of two parents and two children.
@@ -10,6 +11,7 @@ module Genalgo
     def initialize(configuration, evaluator:, random:)
       @bounds = configuration.bounds
       @crossover = configuration.crossover
+      @owns_children = @bounds.instance_of?(Bounds) && @crossover.instance_of?(Crossovers::BlxAlpha)
       @parent_count = @crossover.parent_count(@bounds.dimension)
       @evaluator = evaluator
       @random = random
@@ -32,7 +34,7 @@ module Genalgo
     def evaluate_children(chromosomes)
       sampler = @crossover.prepare(chromosomes, bounds: @bounds)
       Array.new(CHILDREN_PER_STEP) do
-        @evaluator.evaluate(sampler.call(random: @random))
+        @evaluator.evaluate(sampler.call(random: @random), owned: @owns_children)
       end
     end
   end

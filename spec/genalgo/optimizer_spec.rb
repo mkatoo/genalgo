@@ -173,10 +173,11 @@ RSpec.describe Genalgo::Optimizer do
     expect(snapshot(actual)).to eq(snapshot(expected))
   end
 
-  it "calls an overridden prepare on a built-in crossover subclass" do
+  it "copies a frozen candidate from an overridden prepare on a built-in crossover subclass" do
     crossover = Class.new(Genalgo::Crossovers::BlxAlpha) do
       def prepare(_parents, bounds:)
-        ->(**) { Array.new(bounds.dimension, 0.0) }
+        candidate = Array.new(bounds.dimension, 0.0).freeze
+        ->(**) { candidate }
       end
     end.new
     configuration = Genalgo::Configuration.new(**params, crossover: crossover)

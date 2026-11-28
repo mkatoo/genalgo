@@ -3,13 +3,14 @@
 require_relative "bounds"
 
 module Genalgo
-  # Internal proof that coordinates were copied, clamped, converted to Float, and frozen.
+  # Internal proof that coordinates are owned, clamped, converted to Float, and frozen.
   class BoundedChromosome
     attr_reader :bounds, :coordinates
 
-    def initialize(bounds:, chromosome:)
+    def initialize(bounds:, chromosome:, owned: false)
       @bounds = bounds
-      @coordinates = bounds.clamp(chromosome).freeze
+      normalized = owned ? bounds.clamp_owned!(chromosome) : bounds.clamp(chromosome)
+      @coordinates = normalized.freeze
       freeze
     end
   end

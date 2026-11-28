@@ -31,8 +31,10 @@ module Genalgo
     private
 
     def initialize_population(evaluator, random)
+      bounds = configuration.bounds
+      owned = bounds.instance_of?(Bounds)
       individuals = Array.new(configuration.population_size) do
-        evaluator.evaluate(configuration.bounds.sample(random: random))
+        evaluator.evaluate(bounds.sample(random: random), owned: owned)
       end
       Population.new(individuals)
     end

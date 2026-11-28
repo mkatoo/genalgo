@@ -21,10 +21,10 @@ module Genalgo
       @max_evaluations - evaluations
     end
 
-    def evaluate(chromosome)
+    def evaluate(chromosome, owned: false)
       raise EvaluationError, "Evaluation budget exhausted" unless remaining.positive?
 
-      chromosome = BoundedChromosome.new(bounds: @bounds, chromosome: chromosome)
+      chromosome = BoundedChromosome.new(bounds: @bounds, chromosome: chromosome, owned: owned)
       @evaluations += 1
       evaluate_objective(chromosome)
     end
